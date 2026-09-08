@@ -167,48 +167,32 @@ systemctl --user disable --now omarchy-cloud-sync.timer 2>/dev/null || true
 ### Main experience
 
 <!-- Future image: assets/showcase/sync_overview.png -->
-<!-- ![Main desktop experience](assets/showcase/sync_overview.png) -->
+![Main desktop experience](assets/showcase/sync_overview.png)
 
 ### Feature gallery
 
 <!-- Future image: assets/showcase/sync_overview.png -->
-<!-- ![sync_overview.png](assets/showcase/sync_overview.png) -->
+![sync_overview.png](assets/showcase/sync_overview.png)
 
 <!-- Future image: assets/showcase/sync_activity.png -->
-<!-- ![sync_activity.png](assets/showcase/sync_activity.png) -->
+![sync_activity.png](assets/showcase/sync_activity.png)
 
 <!-- Future image: assets/showcase/sync_folders.png -->
-<!-- ![sync_folders.png](assets/showcase/sync_folders.png) -->
+![sync_folders.png](assets/showcase/sync_folders.png)
 
 <!-- Future image: assets/showcase/sync_settings.png -->
-<!-- ![sync_settings.png](assets/showcase/sync_settings.png) -->
+![sync_settings.png](assets/showcase/sync_settings.png)
 
 <!-- Future image: assets/showcase/feature-05.png -->
-<!-- ![Feature preview 5](assets/showcase/feature-05.png) -->
-
 <!-- Future image: assets/showcase/feature-06.png -->
-<!-- ![Feature preview 6](assets/showcase/feature-06.png) -->
-
 <!-- Future image: assets/showcase/feature-07.png -->
-<!-- ![Feature preview 7](assets/showcase/feature-07.png) -->
-
 <!-- Future image: assets/showcase/feature-08.png -->
-<!-- ![Feature preview 8](assets/showcase/feature-08.png) -->
-
 <!-- Future image: assets/showcase/feature-09.png -->
-<!-- ![Feature preview 9](assets/showcase/feature-09.png) -->
-
 <!-- Future image: assets/showcase/feature-10.png -->
-<!-- ![Feature preview 10](assets/showcase/feature-10.png) -->
-
 ### Motion and interaction
 
 <!-- Future GIF: assets/showcase/interaction-01.gif -->
-<!-- ![Interaction preview](assets/showcase/interaction-01.gif) -->
-
 <!-- Future GIF: assets/showcase/interaction-02.gif -->
-<!-- ![Transition preview](assets/showcase/interaction-02.gif) -->
-
 ### Video demonstrations
 
 <!-- Future thumbnail: assets/showcase/video-01-thumbnail.png -->
