@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "daemon0.cloud-sync",
+  "name": "Cloud Sync",
+  "version": "1.0.0",
+  "author": "Daemon0",
+  "description": "Cloud backup and synchronization dashboard with optional rclone integration",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Cloud Sync",
+    "description": "Cloud synchronization status, transfer monitor, and backup manager",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

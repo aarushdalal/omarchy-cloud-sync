@@ -1,0 +1,1534 @@
+#!/usr/bin/env python3
+"""
+Omarchy Cloud Sync Engine (Rclone Backend)
+Manages cloud storage quota tracking, structured multi-folder backup & restore,
+real-time transfer progress streaming, and Quickshell desktop integration.
+"""
+
+import sys
+import os
+import time
+import json
+import signal
+import shutil
+import platform
+import subprocess
+import threading
+import concurrent.futures
+from pathlib import Path
+
+# Paths
+CONFIG_DIR = Path.home() / ".config" / "omarchy"
+CONFIG_FILE = CONFIG_DIR / "cloud-sync.json"
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "omarchy-cloud-sync"
+STATE_FILE = RUNTIME_DIR / "state.json"
+LOG_FILE = RUNTIME_DIR / "sync.log"
+PID_FILE = RUNTIME_DIR / "sync.pid"
+QUOTA_CACHE_FILE = RUNTIME_DIR / "quota_cache.json"
+
+DEFAULT_EXCLUDES = [
+    ".git/**",
+    "node_modules/**",
+    "target/**",
+    "__pycache__/**",
+    "*.cache/**",
+    "*Cache/**",
+    "Dawn*Cache/**",
+    "GPUCache/**",
+    "Crashpad/**",
+    "CachedData/**",
+    "CachedProfilesData/**",
+    "CachedExtensionVSIXs/**",
+    "blob_storage/**",
+    "logs/**",
+    "*.log",
+    "*.tmp",
+    ".venv/**",
+    "dist/**",
+    "build/**",
+    "*.sock",
+    "*.pid"
+]
+
+DEFAULT_FOLDERS = [
+    {
+        "id": "omarchy_config",
+        "name": "Omarchy Shell & Plugins",
+        "category": "config",
+        "path": str(Path.home() / ".config" / "omarchy"),
+        "remote_subpath": "config/omarchy",
+        "enabled": True,
+        "type": "directory"
+    },
+    {
+        "id": "hypr_config",
+        "name": "Hyprland Configuration",
+        "category": "config",
+        "path": str(Path.home() / ".config" / "hypr"),
+        "remote_subpath": "config/hypr",
+        "enabled": True,
+        "type": "directory"
+    },
+    {
+        "id": "tool_configs",
+        "name": "Terminal, Editors & Tools",
+        "category": "config",
+        "path": str(Path.home() / ".config"),
+        "subdirs": ["ghostty", "kitty", "alacritty", "foot", "fish", "nvim", "tmux", "lazygit", "btop", "starship.toml", "mise", "voxtype"],
+        "remote_subpath": "config/apps",
+        "enabled": True,
+        "type": "selective"
+    },
+    {
+        "id": "dotfiles",
+        "name": "Shell Dotfiles & Helpers",
+        "category": "dotfiles",
+        "path": str(Path.home()),
+        "files": [".bashrc", ".zshrc", ".profile"],
+        "remote_subpath": "dotfiles",
+        "enabled": True,
+        "type": "files"
+    },
+    {
+        "id": "system_meta",
+        "name": "Packages & System Meta",
+        "category": "system",
+        "path": "system",
+        "remote_subpath": "system",
+        "enabled": True,
+        "type": "system"
+    },
+    {
+        "id": "antigravity_cli",
+        "name": "Antigravity CLI (Memory & Brain)",
+        "category": "antigravity",
+        "path": str(Path.home() / ".gemini" / "antigravity-cli"),
+        "remote_subpath": "antigravity/cli",
+        "enabled": True,
+        "type": "directory"
+    },
+    {
+        "id": "antigravity_ide",
+        "name": "Antigravity IDE (Agent & Chats)",
+        "category": "antigravity",
+        "path": str(Path.home() / ".gemini" / "antigravity-ide"),
+        "remote_subpath": "antigravity/ide",
+        "enabled": True,
+        "type": "directory"
+    },
+    {
+        "id": "antigravity_ide_user",
+        "name": "Antigravity IDE User Data",
+        "category": "antigravity",
+        "path": str(Path.home() / ".config" / "Antigravity IDE" / "User"),
+        "remote_subpath": "antigravity/ide/user-data",
+        "enabled": True,
+        "type": "directory"
+    },
+    {
+        "id": "antigravity_gui",
+        "name": "Antigravity GUI (State & Brain)",
+        "category": "antigravity",
+        "path": str(Path.home() / ".gemini" / "antigravity"),
+        "remote_subpath": "antigravity/gui",
+        "enabled": True,
+        "type": "directory"
+    },
+    {
+        "id": "antigravity_skills",
+        "name": "Antigravity Shared Skills & Rules",
+        "category": "antigravity",
+        "path": str(Path.home() / ".gemini" / "config"),
+        "remote_subpath": "antigravity/shared-skills",
+        "enabled": True,
+        "type": "directory"
+    },
+    {
+        "id": "workspace_work",
+        "name": "Work Workspace",
+        "category": "workspace",
+        "path": str(Path.home() / "Work"),
+        "remote_subpath": "workspace/Work",
+        "enabled": True,
+        "type": "directory"
+    },
+    {
+        "id": "media_wallpapers",
+        "name": "Wallpapers & Themes",
+        "category": "media",
+        "path": str(Path.home() / "Wallpapers"),
+        "remote_subpath": "media/Wallpapers",
+        "enabled": True,
+        "type": "directory"
+    }
+]
+
+DEFAULT_CONFIG = {
+    "remote": "GDrive",
+    "remote_root": "Omarchy",
+    "folders": DEFAULT_FOLDERS,
+    "exclude_patterns": DEFAULT_EXCLUDES,
+    "transfers": 4,
+    "bwlimit": "0",  # 0 means unlimited
+    "fast_list": True,
+    "drive_use_trash": True,
+    "sound_alerts": True,
+    "auto_sync_interval_hours": 0, # 0 = disabled
+    "mount_path": str(Path.home() / "CloudDrive")
+}
+
+def ensure_dirs():
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_config():
+    ensure_dirs()
+    if not CONFIG_FILE.exists():
+        save_config(DEFAULT_CONFIG)
+        return DEFAULT_CONFIG.copy()
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            data = json.load(f)
+            # Ensure remote_root is set
+            if "remote_root" not in data or data["remote_root"] == "Omarchy-Backup":
+                data["remote_root"] = "Omarchy"
+            for k, v in DEFAULT_CONFIG.items():
+                if k not in data:
+                    data[k] = v
+            return data
+    except Exception:
+        return DEFAULT_CONFIG.copy()
+
+def save_config(cfg):
+    ensure_dirs()
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(cfg, f, indent=2)
+
+def notify(title, message, icon="dialog-information", urgency="normal"):
+    try:
+        cmd = ["notify-send", "-a", "Omarchy Cloud Sync", "-u", urgency, "-i", icon, title, message]
+        subprocess.run(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except Exception:
+        pass
+
+def format_bytes(bytes_val):
+    if bytes_val is None or bytes_val < 0:
+        return "0 B"
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    val = float(bytes_val)
+    idx = 0
+    while val >= 1024.0 and idx < len(units) - 1:
+        val /= 1024.0
+        idx += 1
+    return f"{val:.1f} {units[idx]}"
+
+def format_eta(seconds):
+    if seconds is None or seconds <= 0:
+        return "0s"
+    seconds = int(seconds)
+    if seconds < 60:
+        return f"{seconds}s"
+    elif seconds < 3600:
+        m = seconds // 60
+        s = seconds % 60
+        return f"{m}m {s}s"
+    else:
+        h = seconds // 3600
+        m = (seconds % 3600) // 60
+        return f"{h}h {m}m"
+
+def check_rclone_status(cfg=None):
+    rclone_bin = shutil.which("rclone")
+    if not rclone_bin:
+        return {
+            "installed": False,
+            "configured": False,
+            "status": "not_installed",
+            "message": "rclone is not installed. Please run 'sudo pacman -S rclone' to install.",
+            "remotes": []
+        }
+    try:
+        out = subprocess.check_output(["rclone", "listremotes"], text=True, timeout=5)
+        remotes = [r.strip().rstrip(":") for r in out.strip().splitlines() if r.strip()]
+        target_remote = cfg.get("remote", "GDrive") if cfg else "GDrive"
+        configured = len(remotes) > 0 and (target_remote in remotes or len(remotes) > 0)
+        if not remotes:
+            return {
+                "installed": True,
+                "configured": False,
+                "status": "not_configured",
+                "message": "rclone has no remotes configured. Please run 'rclone config' to setup Google Drive.",
+                "remotes": []
+            }
+        return {
+            "installed": True,
+            "configured": configured,
+            "status": "ready" if configured else "remote_missing",
+            "message": "Ready" if configured else f"Remote '{target_remote}' not found in rclone config.",
+            "remotes": remotes
+        }
+    except Exception as e:
+        return {
+            "installed": True,
+            "configured": False,
+            "status": "error",
+            "message": f"rclone error: {e}",
+            "remotes": []
+        }
+
+def get_available_remotes(cfg=None):
+    info = check_rclone_status(cfg)
+    return info.get("remotes", [])
+
+def check_mount_status(cfg):
+    rclone_bin = shutil.which("rclone")
+    if not rclone_bin:
+        return False
+    mount_point = cfg.get("mount_path", str(Path.home() / "CloudDrive"))
+    try:
+        out = subprocess.check_output(["findmnt", "-n", "-o", "FSTYPE", mount_point], text=True, stderr=subprocess.DEVNULL).strip()
+        return "fuse" in out.lower() or "rclone" in out.lower()
+    except Exception:
+        return False
+
+def get_storage_quota(cfg, force_refresh=False):
+    ensure_dirs()
+    remote = cfg.get("remote", "GDrive")
+    remote_target = f"{remote}:"
+
+    r_status = check_rclone_status(cfg)
+    if not r_status["installed"]:
+        return {
+            "remote": remote,
+            "total": 0,
+            "used": 0,
+            "free": 0,
+            "trashed": 0,
+            "total_formatted": "Not Installed",
+            "used_formatted": "0 B",
+            "free_formatted": "0 B",
+            "trashed_formatted": "0 B",
+            "used_pct": 0.0,
+            "last_updated": 0,
+            "error": "rclone is not installed",
+            "auth_error": False,
+            "rclone_installed": False,
+            "rclone_configured": False
+        }
+    if not r_status["configured"]:
+        return {
+            "remote": remote,
+            "total": 0,
+            "used": 0,
+            "free": 0,
+            "trashed": 0,
+            "total_formatted": "Not Setup",
+            "used_formatted": "0 B",
+            "free_formatted": "0 B",
+            "trashed_formatted": "0 B",
+            "used_pct": 0.0,
+            "last_updated": 0,
+            "error": "rclone has no remotes configured",
+            "auth_error": False,
+            "rclone_installed": True,
+            "rclone_configured": False
+        }
+
+    # Check cache first (valid for 10 minutes unless force_refresh)
+    if not force_refresh and QUOTA_CACHE_FILE.exists():
+        try:
+            with open(QUOTA_CACHE_FILE, "r") as f:
+                cached = json.load(f)
+                if time.time() - cached.get("cached_at", 0) < 600:
+                    return cached.get("data")
+        except Exception:
+            pass
+
+    try:
+        proc = subprocess.run(
+            ["rclone", "about", remote_target, "--json"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=8
+        )
+        if proc.returncode != 0:
+            err_msg = proc.stderr.strip() or f"rclone exited with code {proc.returncode}"
+            raise RuntimeError(err_msg)
+        data = json.loads(proc.stdout)
+        total = data.get("total", 0)
+        used = data.get("used", 0)
+        free = data.get("free", max(0, total - used))
+        trashed = data.get("trashed", 0)
+        
+        used_pct = round((used / total * 100.0), 1) if total > 0 else 0.0
+
+        res = {
+            "remote": remote,
+            "total": total,
+            "used": used,
+            "free": free,
+            "trashed": trashed,
+            "total_formatted": format_bytes(total),
+            "used_formatted": format_bytes(used),
+            "free_formatted": format_bytes(free),
+            "trashed_formatted": format_bytes(trashed),
+            "used_pct": used_pct,
+            "last_updated": int(time.time()),
+            "auth_error": False
+        }
+
+        with open(QUOTA_CACHE_FILE, "w") as f:
+            json.dump({"cached_at": time.time(), "data": res}, f)
+
+        return res
+    except Exception as e:
+        if QUOTA_CACHE_FILE.exists():
+            try:
+                with open(QUOTA_CACHE_FILE, "r") as f:
+                    cached_data = json.load(f).get("data")
+                    if cached_data and not cached_data.get("auth_error"):
+                        return cached_data
+            except Exception:
+                pass
+        err_str = str(e)
+        auth_error = ("invalid_grant" in err_str.lower() or "token" in err_str.lower() or "expired" in err_str.lower() or "reconnect" in err_str.lower())
+        return {
+            "remote": remote,
+            "total": 0,
+            "used": 0,
+            "free": 0,
+            "trashed": 0,
+            "total_formatted": "Unknown",
+            "used_formatted": "0 B",
+            "free_formatted": "0 B",
+            "trashed_formatted": "0 B",
+            "used_pct": 0.0,
+            "last_updated": 0,
+            "error": err_str,
+            "auth_error": auth_error
+        }
+
+def load_state():
+    ensure_dirs()
+    if not STATE_FILE.exists():
+        return {
+            "active": False,
+            "status": "idle",
+            "message": "Idle",
+            "current_file": "",
+            "speed": "0 B/s",
+            "bytes_transferred": 0,
+            "bytes_total": 0,
+            "progress_pct": 0.0,
+            "eta_formatted": "0s",
+            "active_transfers": [],
+            "recent_logs": [],
+            "last_sync_time": 0,
+            "last_sync_status": "none"
+        }
+    try:
+        with open(STATE_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "active": False,
+            "status": "idle",
+            "message": "Idle"
+        }
+
+def save_state(state):
+    ensure_dirs()
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
+
+def append_sync_log(msg, level="info"):
+    ensure_dirs()
+    entry = {
+        "timestamp": int(time.time()),
+        "time_str": time.strftime("%H:%M:%S"),
+        "level": level,
+        "message": msg
+    }
+    state = load_state()
+    logs = state.get("recent_logs", [])
+    logs.insert(0, entry)
+    state["recent_logs"] = logs[:40]
+    save_state(state)
+
+def is_sync_running():
+    ensure_dirs()
+    if not PID_FILE.exists():
+        return False
+    try:
+        pid = int(PID_FILE.read_text().strip())
+        os.kill(pid, 0)
+        return True
+    except Exception:
+        return False
+
+# ==============================================================================
+# HIERARCHICAL STAGING ENGINE (LIGHTWEIGHT CONFIGS & METADATA ONLY)
+# ==============================================================================
+
+def prepare_staging_directory(staging_dir, cfg):
+    """
+    Stages lightweight system manifests, dotfiles, and app configs.
+    Does NOT copy heavy multi-GB directories locally.
+    Takes <0.1s to prepare.
+    """
+    staging_dir = Path(staging_dir)
+    if staging_dir.exists():
+        for item in staging_dir.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item, ignore_errors=True)
+            else:
+                try:
+                    item.unlink()
+                except Exception:
+                    pass
+    staging_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. System & Package Metadata
+    system_dir = staging_dir / "system"
+    system_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(f"pacman -Qqen > '{system_dir}/pkglist-official.txt' 2>/dev/null || true", shell=True)
+    subprocess.run(f"pacman -Qqem > '{system_dir}/pkglist-aur.txt' 2>/dev/null || true", shell=True)
+    subprocess.run(f"mise ls > '{system_dir}/mise-tools.txt' 2>/dev/null || true", shell=True)
+
+    meta_info = {
+        "backup_created_at": time.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        "timestamp": int(time.time()),
+        "hostname": platform.node(),
+        "kernel": platform.release(),
+        "arch": platform.machine(),
+        "user": os.environ.get("USER", "daemon0"),
+        "structure_version": "2.0"
+    }
+    with open(system_dir / "backup-meta.json", "w") as f:
+        json.dump(meta_info, f, indent=2)
+
+    # 2. Stage only small config folders and dotfiles (selective or files type)
+    folders = cfg.get("folders", [])
+    for fld in folders:
+        if not fld.get("enabled", True):
+            continue
+
+        fld_type = fld.get("type", "directory")
+        src_path = Path(fld.get("path", "")).expanduser()
+        remote_sub = fld.get("remote_subpath", fld.get("name", "folder"))
+        target = staging_dir / remote_sub
+
+        if fld_type == "selective":
+            target.mkdir(parents=True, exist_ok=True)
+            for sub in fld.get("subdirs", []):
+                item_path = src_path / sub
+                if item_path.exists():
+                    subprocess.run(["rsync", "-a", "--delete", str(item_path), f"{target}/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        elif fld_type == "files":
+            target.mkdir(parents=True, exist_ok=True)
+            for fn in fld.get("files", []):
+                item_path = src_path / fn
+                if item_path.exists():
+                    shutil.copy2(item_path, target / fn)
+
+# ==============================================================================
+# DIRECT MULTI-TARGET SYNC WORKER & PROGRESS STREAMING
+# ==============================================================================
+
+def precreate_remote_folders(jobs):
+    """
+    Pre-creates all remote directory paths in Google Drive in parallel.
+    Eliminates folder-creation roundtrips and prevents duplicate folder creation.
+    """
+    unique_remotes = list(set(target for _, _, target, _ in jobs))
+    if not unique_remotes:
+        return
+    
+    append_sync_log(f"Pre-creating {len(unique_remotes)} cloud directories in Google Drive...", level="info")
+    
+    def make_dir(target_dir):
+        try:
+            subprocess.run(["rclone", "mkdir", target_dir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+        except Exception:
+            pass
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(make_dir, unique_remotes))
+
+def execute_sync_background():
+    cfg = load_config()
+    remote = cfg.get("remote", "GDrive")
+    remote_root = cfg.get("remote_root", "Omarchy")
+    remote_base = f"{remote}:{remote_root}"
+
+    staging_dir = Path.home() / ".local" / "share" / "omarchy-backup-staging"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+
+    state = load_state()
+    state["active"] = True
+    state["status"] = "syncing"
+    state["message"] = "Initializing cloud backup..."
+    state["progress_pct"] = 0.0
+    state["speed"] = "0 B/s"
+    state["active_transfers"] = []
+    save_state(state)
+
+    append_sync_log(f"Starting structured cloud sync to {remote_base}...", level="info")
+    notify("Cloud Sync Started", f"Syncing organized folders to {remote_base}...")
+
+    # Pre-flight check: verify remote authentication
+    try:
+        chk = subprocess.run(
+            ["rclone", "about", f"{remote}:", "--json"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=8
+        )
+        if chk.returncode != 0:
+            err_lower = chk.stderr.lower()
+            if "invalid_grant" in err_lower or "token" in err_lower or "expired" in err_lower or "reconnect" in err_lower:
+                msg = f"OAuth token for '{remote}' has expired or been revoked. Reconnect required."
+                append_sync_log(msg, level="error")
+                notify("Cloud Sync Failed", f"{remote} token expired. Run: rclone config reconnect {remote}:", urgency="critical")
+                st = load_state()
+                st["active"] = False
+                st["status"] = "error"
+                st["message"] = msg
+                st["last_sync_status"] = "error"
+                save_state(st)
+                return False
+    except Exception:
+        pass
+
+    # Write PID
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+
+    try:
+        # Step 1: Stage lightweight configs (<0.1s)
+        prepare_staging_directory(staging_dir, cfg)
+
+        # Step 2: Build sync jobs list
+        # Job format: (name, source_path_str, remote_target_str, extra_excludes)
+        jobs = []
+
+        # 1. Staged Config, Dotfiles & System subdirectories
+        if (staging_dir / "system").exists():
+            jobs.append(("Packages & System Metadata", str(staging_dir / "system"), f"{remote_base}/system", []))
+        if (staging_dir / "dotfiles").exists():
+            jobs.append(("Shell Dotfiles", str(staging_dir / "dotfiles"), f"{remote_base}/dotfiles", []))
+        if (staging_dir / "config").exists():
+            jobs.append(("Terminal & App Configs", str(staging_dir / "config"), f"{remote_base}/config", []))
+
+        # 2. Enabled direct directories
+        for fld in cfg.get("folders", []):
+            if not fld.get("enabled", True):
+                continue
+            fld_type = fld.get("type", "directory")
+            if fld_type != "directory":
+                continue # Staged configs handled above
+
+            src_path = Path(fld.get("path", "")).expanduser()
+            if not src_path.exists():
+                continue
+
+            remote_sub = fld.get("remote_subpath", fld.get("name", "folder"))
+            remote_target = f"{remote_base}/{remote_sub}"
+            extra_ex = fld.get("exclude", [])
+            jobs.append((fld.get("name", remote_sub), str(src_path), remote_target, extra_ex))
+
+        # Step 3: Pre-create entire remote folder hierarchy in Google Drive
+        state = load_state()
+        state["message"] = "Preparing cloud directory structure..."
+        save_state(state)
+        precreate_remote_folders(jobs)
+
+        total_jobs = len(jobs)
+        success_count = 0
+
+        # Concurrency stream settings
+        transfers_count = max(4, int(cfg.get("transfers", 16)))
+        checkers_count = max(16, transfers_count * 2)
+
+        for job_idx, (job_name, src, target, extra_ex) in enumerate(jobs):
+            # Check if sync was stopped by user
+            if not PID_FILE.exists():
+                break
+
+            state = load_state()
+            state["message"] = f"[{job_idx+1}/{total_jobs}] Syncing {job_name}..."
+            state["active"] = True
+            state["status"] = "syncing"
+            save_state(state)
+
+            cmd = [
+                "rclone", "sync",
+                src,
+                target,
+                "-v",
+                "--update",
+                "--modify-window", "1s",
+                "--track-renames",
+                "--skip-links",
+                "--fast-list",
+                "--drive-use-trash",
+                "--transfers", str(transfers_count),
+                "--checkers", str(checkers_count),
+                "--drive-pacer-min-sleep", "10ms",
+                "--drive-pacer-burst", "100",
+                "--drive-chunk-size", "64M",
+                "--drive-upload-cutoff", "32M",
+                "--buffer-size", "32M",
+                "--use-mmap",
+                "--stats", "500ms",
+                "--stats-log-level", "INFO",
+                "--use-json-log"
+            ]
+
+            bwlimit = cfg.get("bwlimit", "0")
+            if bwlimit and bwlimit != "0":
+                cmd.extend(["--bwlimit", bwlimit])
+
+            for exc in cfg.get("exclude_patterns", []):
+                cmd.extend(["--exclude", exc])
+            for exc in extra_ex:
+                cmd.extend(["--exclude", exc])
+
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1
+            )
+
+            def stream_reader(pipe, current_job_idx, total_job_count, job_label):
+                for line in iter(pipe.readline, ''):
+                    if not line:
+                        break
+                    line_str = line.strip()
+                    if not line_str.startswith("{"):
+                        continue
+                    try:
+                        ev = json.loads(line_str)
+                        stats = ev.get("stats")
+                        obj_name = ev.get("object")
+
+                        st = load_state()
+                        updated = False
+
+                        if obj_name:
+                            st["current_file"] = str(obj_name)
+                            msg_text = ev.get("msg", "")
+                            if msg_text in ["Copied (new)", "Updated", "Transferred", "Copied"]:
+                                append_sync_log(f"Uploaded: {Path(obj_name).name}", level="info")
+                            updated = True
+
+                        if stats:
+                            total_bytes = stats.get("totalBytes", 0)
+                            bytes_done = stats.get("bytes", 0)
+                            speed_raw = stats.get("speed", 0)
+                            job_pct = (bytes_done / total_bytes * 100.0) if total_bytes > 0 else 0.0
+                            overall_pct = round(((current_job_idx + (job_pct / 100.0)) / total_job_count) * 100.0, 1)
+                            eta_raw = stats.get("eta", 0)
+
+                            transfers_list = []
+                            raw_transfers = stats.get("transferring", [])
+                            if raw_transfers:
+                                for t in raw_transfers:
+                                    transfers_list.append({
+                                        "name": t.get("name", "file"),
+                                        "percentage": t.get("percentage", 0),
+                                        "speed": format_bytes(t.get("speed", 0)) + "/s",
+                                        "bytes": format_bytes(t.get("bytes", 0)),
+                                        "size": format_bytes(t.get("size", 0))
+                                    })
+                                st["current_file"] = transfers_list[0]["name"]
+
+                            st["bytes_transferred"] = bytes_done
+                            st["bytes_total"] = total_bytes
+                            st["bytes_transferred_formatted"] = format_bytes(bytes_done)
+                            st["bytes_total_formatted"] = format_bytes(total_bytes)
+                            st["speed"] = format_bytes(speed_raw) + "/s"
+                            st["progress_pct"] = overall_pct
+                            st["eta_formatted"] = format_eta(eta_raw) if eta_raw else "0s"
+                            st["active_transfers"] = transfers_list
+                            st["active"] = True
+                            st["status"] = "syncing"
+                            updated = True
+
+                        if updated:
+                            save_state(st)
+                    except Exception:
+                        pass
+
+            t_err = threading.Thread(target=stream_reader, args=(proc.stderr, job_idx, total_jobs, job_name), daemon=True)
+            t_err.start()
+
+            proc.wait()
+            t_err.join(timeout=2)
+
+            if proc.returncode == 0:
+                success_count += 1
+            else:
+                append_sync_log(f"Sync error on '{job_name}' (exit code {proc.returncode})", level="warning")
+
+        # All jobs finished
+        st = load_state()
+        st["active"] = False
+        st["active_transfers"] = []
+        st["speed"] = "0 B/s"
+        st["last_sync_time"] = int(time.time())
+
+        if success_count == total_jobs:
+            st["status"] = "idle"
+            st["message"] = "Structured cloud backup completed successfully"
+            st["progress_pct"] = 100.0
+            st["current_file"] = "All folders up to date"
+            st["last_sync_status"] = "success"
+            save_state(st)
+            append_sync_log(f"Structured backup to {remote_base} completed successfully! ✔", level="success")
+            notify("Cloud Sync Complete", f"All folders organized and synced to {remote_base}.")
+            get_storage_quota(cfg, force_refresh=True)
+        else:
+            st["status"] = "idle"
+            st["message"] = f"Backup completed ({success_count}/{total_jobs} succeeded)"
+            st["last_sync_status"] = "partial"
+            save_state(st)
+            append_sync_log(f"Backup completed ({success_count}/{total_jobs} targets synced)", level="info")
+
+    except Exception as e:
+        st = load_state()
+        st["active"] = False
+        st["status"] = "error"
+        st["message"] = str(e)
+        st["speed"] = "0 B/s"
+        st["active_transfers"] = []
+        save_state(st)
+        append_sync_log(f"Sync exception: {e}", level="error")
+        notify("Cloud Sync Error", str(e), icon="dialog-error")
+    finally:
+        if PID_FILE.exists():
+            try:
+                PID_FILE.unlink()
+            except Exception:
+                pass
+
+def stop_active_sync():
+    cfg = load_config()
+    remote_root = cfg.get("remote_root", "Omarchy")
+    if PID_FILE.exists():
+        try:
+            with open(PID_FILE, "r") as f:
+                pid = int(f.read().strip())
+            os.kill(pid, signal.SIGTERM)
+        except Exception:
+            pass
+        try:
+            PID_FILE.unlink()
+        except Exception:
+            pass
+    
+    subprocess.run(["pkill", "-f", f"rclone sync.*{remote_root}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", "rclone sync.*Omarchy-Backup"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    st = load_state()
+    st["active"] = False
+    st["status"] = "idle"
+    st["message"] = "Sync cancelled"
+    st["speed"] = "0 B/s"
+    st["active_transfers"] = []
+    save_state(st)
+
+    append_sync_log("Sync cancelled by user.", level="warning")
+    notify("Cloud Sync Stopped", "Active sync was cancelled.")
+
+# ==============================================================================
+# STRUCTURED RESTORE ENGINE
+# ==============================================================================
+
+def execute_restore(dry_run=False):
+    cfg = load_config()
+    remote = cfg.get("remote", "GDrive")
+    remote_root = cfg.get("remote_root", "Omarchy")
+    remote_source = f"{remote}:{remote_root}"
+
+    staging_dir = Path.home() / ".local" / "share" / "omarchy-backup-staging"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+
+    append_sync_log(f"Starting restore from {remote_source}...", level="info")
+    notify("Cloud Restore Started", f"Fetching structured backup from {remote_source}...")
+
+    if not dry_run:
+        # Step 1: Pull from cloud to staging
+        cmd = ["rclone", "sync", remote_source, str(staging_dir), "--fast-list", "--transfers", "4"]
+        res = subprocess.run(cmd)
+        if res.returncode != 0:
+            append_sync_log("Failed to download backup from cloud.", level="error")
+            notify("Restore Failed", "Could not download backup from cloud.", icon="dialog-error")
+            return False
+
+    home = Path.home()
+
+    # Step 2: Restore config/omarchy
+    src_omarchy = staging_dir / "config" / "omarchy"
+    if src_omarchy.exists():
+        dst = home / ".config" / "omarchy"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_omarchy}/", f"{dst}/"])
+
+    # Step 3: Restore config/hypr
+    src_hypr = staging_dir / "config" / "hypr"
+    if src_hypr.exists():
+        dst = home / ".config" / "hypr"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_hypr}/", f"{dst}/"])
+
+    # Step 4: Restore config/apps
+    src_apps = staging_dir / "config" / "apps"
+    if src_apps.exists():
+        dst = home / ".config"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_apps}/", f"{dst}/"])
+
+    # Step 5: Restore dotfiles
+    src_dotfiles = staging_dir / "dotfiles"
+    if src_dotfiles.exists():
+        for f in src_dotfiles.iterdir():
+            if f.is_file() and not dry_run:
+                shutil.copy2(f, home / f.name)
+
+    # Step 6: Restore workspace/Work
+    src_work = staging_dir / "workspace" / "Work"
+    if src_work.exists():
+        dst = home / "Work"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_work}/", f"{dst}/"])
+
+    # Step 7: Restore media/Wallpapers
+    src_wall = staging_dir / "media" / "Wallpapers"
+    if src_wall.exists():
+        dst = home / "Wallpapers"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_wall}/", f"{dst}/"])
+
+    # Step 8: Restore custom folders
+    src_custom = staging_dir / "custom"
+    if src_custom.exists():
+        for custom_sub in src_custom.iterdir():
+            if custom_sub.is_dir() and not dry_run:
+                dst = home / custom_sub.name
+                dst.mkdir(parents=True, exist_ok=True)
+                subprocess.run(["rsync", "-a", f"{custom_sub}/", f"{dst}/"])
+
+    # Step 9: Restore Antigravity components
+    # 9a. Antigravity CLI
+    src_ag_cli = staging_dir / "antigravity" / "cli"
+    if src_ag_cli.exists():
+        dst = home / ".gemini" / "antigravity-cli"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_ag_cli}/", f"{dst}/"])
+
+    # 9b. Antigravity IDE Memory
+    src_ag_ide = staging_dir / "antigravity" / "ide"
+    if src_ag_ide.exists():
+        dst = home / ".gemini" / "antigravity-ide"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", "--exclude", "user-data", f"{src_ag_ide}/", f"{dst}/"])
+
+    # 9c. Antigravity IDE User Data
+    src_ag_ide_user = staging_dir / "antigravity" / "ide" / "user-data"
+    if src_ag_ide_user.exists():
+        dst = home / ".config" / "Antigravity IDE" / "User"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_ag_ide_user}/", f"{dst}/"])
+
+    # 9d. Antigravity GUI
+    src_ag_gui = staging_dir / "antigravity" / "gui"
+    if src_ag_gui.exists():
+        dst = home / ".gemini" / "antigravity"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_ag_gui}/", f"{dst}/"])
+
+    # 9e. Antigravity Shared Skills & Rules
+    src_ag_skills = staging_dir / "antigravity" / "shared-skills"
+    if src_ag_skills.exists():
+        dst = home / ".gemini" / "config"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_ag_skills}/", f"{dst}/"])
+
+    # Step 10: Restore Custom User Scripts (~/.local/bin)
+    src_scripts = staging_dir / "scripts" / "local-bin"
+    if src_scripts.exists():
+        dst = home / ".local" / "bin"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_scripts}/", f"{dst}/"])
+            subprocess.run(f"chmod +x '{dst}'/* 2>/dev/null || true", shell=True)
+
+    # Step 11: Restore Systemd User Units (~/.config/systemd)
+    src_systemd = staging_dir / "config" / "systemd"
+    if src_systemd.exists():
+        dst = home / ".config" / "systemd"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_systemd}/", f"{dst}/"])
+            subprocess.run(["systemctl", "--user", "daemon-reload"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Step 12: Restore EasyEffects DSP Presets (~/.local/share/easyeffects)
+    src_ee = staging_dir / "config" / "easyeffects"
+    if src_ee.exists():
+        dst = home / ".local" / "share" / "easyeffects"
+        dst.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            subprocess.run(["rsync", "-a", f"{src_ee}/", f"{dst}/"])
+
+    append_sync_log("Cloud restore finished successfully! ✔", level="success")
+    notify("Cloud Restore Complete", "All configurations, Antigravity memories, and files restored successfully.")
+    return True
+
+def toggle_mount():
+    cfg = load_config()
+    mount_point = cfg.get("mount_path", str(Path.home() / "CloudDrive"))
+    is_mounted = check_mount_status(cfg)
+
+    if is_mounted:
+        subprocess.run(["systemctl", "--user", "stop", "rclone-mount.service"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["fusermount3", "-u", mount_point], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(0.5)
+        if not check_mount_status(cfg):
+            notify("CloudDrive Unmounted", f"Unmounted {mount_point}")
+            append_sync_log(f"Unmounted {mount_point}", level="info")
+        else:
+            notify("CloudDrive Warning", f"Unmount requested, {mount_point} may still be busy", urgency="critical")
+    else:
+        remote = cfg.get("remote", "GDrive")
+        # Pre-flight check: verify remote authentication before attempting mount
+        try:
+            test_out = subprocess.run(
+                ["rclone", "about", f"{remote}:", "--json"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=6
+            )
+            if test_out.returncode != 0:
+                err_lower = test_out.stderr.lower()
+                if "invalid_grant" in err_lower or "token" in err_lower or "expired" in err_lower or "reconnect" in err_lower:
+                    notify("Mount Failed: Auth Expired", f"{remote} token expired. Run: rclone config reconnect {remote}:", urgency="critical")
+                    append_sync_log(f"Mount failed: {remote} OAuth token expired or revoked. Please reconnect.", level="error")
+                    return False
+        except Exception:
+            pass
+
+        Path(mount_point).mkdir(parents=True, exist_ok=True)
+
+        is_svc_enabled = False
+        try:
+            res = subprocess.run(["systemctl", "--user", "is-enabled", "rclone-mount.service"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            is_svc_enabled = (res.returncode == 0 and res.stdout.strip() == "enabled")
+        except Exception:
+            pass
+
+        if is_svc_enabled:
+            subprocess.run(["systemctl", "--user", "start", "rclone-mount.service"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            cmd = [
+                "rclone", "mount", f"{remote}:", mount_point,
+                "--vfs-cache-mode", "full",
+                "--vfs-read-chunk-size", "32M",
+                "--vfs-read-chunk-size-limit", "512M",
+                "--buffer-size", "64M",
+                "--dir-cache-time", "1h"
+            ]
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=os.setpgrp)
+
+        time.sleep(1.5)
+        if check_mount_status(cfg):
+            notify("CloudDrive Mounted", f"Mounted {remote}: to {mount_point}")
+            append_sync_log(f"Successfully mounted {remote}: to {mount_point}", level="success")
+            return True
+        else:
+            notify("Mount Failed", f"Failed to mount {remote}: to {mount_point}. Check rclone status.", urgency="critical")
+            append_sync_log(f"Mount attempt failed for {remote}: to {mount_point}", level="warning")
+            return False
+
+# ==============================================================================
+# FOLDER MANAGEMENT
+# ==============================================================================
+
+def add_folder(path_str, name=None, remote_subpath=None):
+    cfg = load_config()
+    p = Path(path_str).expanduser().resolve()
+    if not p.exists():
+        print(json.dumps({"success": False, "error": f"Path '{path_str}' does not exist"}))
+        return False
+
+    folder_id = f"custom_{int(time.time())}"
+    folder_name = name or p.name
+    
+    # Intelligently assign clean hierarchical remote subpath
+    if remote_subpath:
+        subpath = remote_subpath
+    else:
+        subpath = f"custom/{p.name}"
+
+    folders = cfg.get("folders", [])
+    # Check if already added
+    for fld in folders:
+        if Path(fld.get("path", "")).expanduser().resolve() == p:
+            fld["enabled"] = True
+            save_config(cfg)
+            print(json.dumps({"success": True, "message": f"Updated existing folder '{p.name}'"}))
+            return True
+
+    new_entry = {
+        "id": folder_id,
+        "name": folder_name,
+        "category": "custom",
+        "path": str(p),
+        "remote_subpath": subpath,
+        "enabled": True,
+        "type": "directory"
+    }
+    folders.append(new_entry)
+    cfg["folders"] = folders
+    save_config(cfg)
+    append_sync_log(f"Added synced folder: '{str(p)}' ➔ '{subpath}'", level="info")
+    print(json.dumps({"success": True, "folder": new_entry}))
+    return True
+
+def remove_folder(folder_id_or_path):
+    cfg = load_config()
+    folders = cfg.get("folders", [])
+    updated = []
+    removed = False
+
+    for fld in folders:
+        if fld.get("id") == folder_id_or_path or fld.get("path") == folder_id_or_path:
+            removed = True
+            append_sync_log(f"Removed synced folder: '{fld.get('name')}'", level="info")
+        else:
+            updated.append(fld)
+
+    if removed:
+        cfg["folders"] = updated
+        save_config(cfg)
+        print(json.dumps({"success": True}))
+        return True
+    else:
+        print(json.dumps({"success": False, "error": "Folder not found"}))
+        return False
+
+def toggle_folder(folder_id_or_path):
+    cfg = load_config()
+    folders = cfg.get("folders", [])
+    found = False
+    new_state = False
+
+    for fld in folders:
+        if fld.get("id") == folder_id_or_path or fld.get("path") == folder_id_or_path:
+            fld["enabled"] = not fld.get("enabled", True)
+            new_state = fld["enabled"]
+            found = True
+            break
+
+    if found:
+        cfg["folders"] = folders
+        save_config(cfg)
+        print(json.dumps({"success": True, "enabled": new_state}))
+        return True
+    else:
+        print(json.dumps({"success": False, "error": "Folder not found"}))
+        return False
+
+def list_directories(path_str=None):
+    if not path_str or path_str.strip() == "":
+        p = Path.home()
+    else:
+        p = Path(path_str).expanduser().resolve()
+    
+    if not p.exists() or not p.is_dir():
+        p = Path.home()
+
+    subdirs = []
+    try:
+        for item in sorted(p.iterdir(), key=lambda x: x.name.lower()):
+            if item.is_dir():
+                if item.name in [".git", "node_modules", "target", "__pycache__", ".cache", "Crashpad", "blob_storage"]:
+                    continue
+                subdirs.append({
+                    "name": item.name,
+                    "path": str(item)
+                })
+    except Exception:
+        pass
+
+    # Build breadcrumbs
+    home = Path.home()
+    chain = []
+    curr = p
+    while True:
+        chain.append(curr)
+        if curr == curr.parent:
+            break
+        curr = curr.parent
+    chain.reverse()
+
+    breadcrumbs = []
+    for node in chain:
+        label = "Home" if node == home else (node.name or "/")
+        breadcrumbs.append({
+            "name": label,
+            "path": str(node)
+        })
+
+    result = {
+        "current_path": str(p),
+        "parent_path": str(p.parent) if p != p.parent else str(p),
+        "is_root": (p == p.parent),
+        "breadcrumbs": breadcrumbs,
+        "directories": subdirs
+    }
+    return result
+
+def pick_folder_gui():
+    home_dir = str(Path.home())
+    env = os.environ.copy()
+    if "WAYLAND_DISPLAY" not in env:
+        env["WAYLAND_DISPLAY"] = "wayland-1"
+    if "DISPLAY" not in env:
+        env["DISPLAY"] = ":0"
+    try:
+        cmd = [
+            "zenity", "--file-selection", "--directory",
+            "--title=Select Folder to Sync to Google Drive",
+            f"--filename={home_dir}/"
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=env)
+        if res.returncode == 0:
+            selected = res.stdout.strip()
+            if selected and Path(selected).exists():
+                success = add_folder(selected)
+                if success:
+                    notify("Folder Added", f"Added '{Path(selected).name}' to Cloud Sync.")
+                return True
+        return False
+    except Exception as e:
+        append_sync_log(f"Folder picker error: {e}", level="error")
+        return False
+
+def pick_folder_menu():
+    home = Path.home()
+    options = [
+        "📂 Browse Custom Directory (Open File Picker)...",
+        f"📁 Documents ({home / 'Documents'})",
+        f"🖼️ Pictures ({home / 'Pictures'})",
+        f"📥 Downloads ({home / 'Downloads'})",
+        f"🎵 Music ({home / 'Music'})",
+        f"🎬 Videos ({home / 'Videos'})",
+        f"📝 Notes ({home / 'Notes'})",
+        f"🔑 SSH Keys ({home / '.ssh'})"
+    ]
+    try:
+        cmd = ["omarchy-menu-select", "Select Folder to Sync:", "--", "--width", "560", "--maxheight", "450"] + options
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        if res.returncode == 0:
+            choice = res.stdout.strip()
+            if "Browse Custom Directory" in choice:
+                return pick_folder_gui()
+            elif "(" in choice and ")" in choice:
+                path_part = choice.split("(")[-1].split(")")[0].strip()
+                if Path(path_part).exists():
+                    success = add_folder(path_part)
+                    if success:
+                        notify("Folder Added", f"Added '{Path(path_part).name}' to Cloud Sync.")
+                    return True
+        return False
+    except Exception:
+        return pick_folder_gui()
+
+# ==============================================================================
+# STATUS EMITTER
+# ==============================================================================
+
+def get_full_status():
+    cfg = load_config()
+    state = load_state()
+    quota = get_storage_quota(cfg, force_refresh=False)
+    r_status = check_rclone_status(cfg)
+    remotes = r_status.get("remotes", [])
+    is_mounted = check_mount_status(cfg)
+
+    is_active = state.get("active", False)
+    if is_active:
+        if not PID_FILE.exists():
+            is_active = False
+            state["active"] = False
+            state["status"] = "idle"
+            save_state(state)
+        else:
+            try:
+                with open(PID_FILE, "r") as f:
+                    pid = int(f.read().strip())
+                os.kill(pid, 0)
+            except Exception:
+                is_active = False
+                state["active"] = False
+                state["status"] = "idle"
+                save_state(state)
+
+    remote_name = cfg.get("remote", "GDrive")
+    remote_root = cfg.get("remote_root", "Omarchy")
+
+    payload = {
+        "active": is_active,
+        "status": state.get("status", "idle"),
+        "message": state.get("message", "Idle"),
+        "current_file": state.get("current_file", ""),
+        "speed": state.get("speed", "0 B/s"),
+        "bytes_transferred": state.get("bytes_transferred", 0),
+        "bytes_total": state.get("bytes_total", 0),
+        "bytes_transferred_formatted": format_bytes(state.get("bytes_transferred", 0)),
+        "bytes_total_formatted": format_bytes(state.get("bytes_total", 0)),
+        "progress_pct": state.get("progress_pct", 0.0),
+        "eta_formatted": state.get("eta_formatted", "0s"),
+        "active_transfers": state.get("active_transfers", []),
+        "recent_logs": state.get("recent_logs", []),
+        "last_sync_time": state.get("last_sync_time", 0),
+        "last_sync_status": state.get("last_sync_status", "none"),
+        "storage": quota,
+        "remotes": remotes,
+        "selected_remote": remote_name,
+        "remote_root": remote_root,
+        "remote_full_path": f"{remote_name}:{remote_root}/",
+        "mounted": is_mounted,
+        "mount_path": cfg.get("mount_path", str(Path.home() / "CloudDrive")),
+        "folders": cfg.get("folders", DEFAULT_FOLDERS),
+        "exclude_patterns": cfg.get("exclude_patterns", DEFAULT_EXCLUDES),
+        "transfers": cfg.get("transfers", 4),
+        "bwlimit": cfg.get("bwlimit", "0"),
+        "auto_sync_interval_hours": cfg.get("auto_sync_interval_hours", 0),
+        "rclone_installed": r_status.get("installed", False),
+        "rclone_configured": r_status.get("configured", False),
+        "rclone_status": r_status.get("status", "unknown"),
+        "rclone_message": r_status.get("message", "")
+    }
+    return payload
+
+# ==============================================================================
+# MAIN CLI ENTRY POINT
+# ==============================================================================
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ["status", "--status", "status-json", "--json"]:
+        print(json.dumps(get_full_status(), indent=2))
+        return
+
+    cmd = sys.argv[1]
+
+    if cmd in ["install-rclone", "setup-rclone"]:
+        subprocess.Popen(["omarchy-launch-floating-terminal-with-presentation", "sudo pacman -S --needed rclone"])
+        return
+
+    if cmd in ["config-rclone", "rclone-config"]:
+        subprocess.Popen(["omarchy-launch-floating-terminal-with-presentation", "rclone config"])
+        return
+
+    if cmd in ["sync", "sync-start", "start"]:
+        r_status = check_rclone_status()
+        if not r_status["installed"]:
+            notify("Cloud Sync Failed", "rclone is not installed. Please run 'sudo pacman -S rclone'.", glyph="󰅚", urgency="critical")
+            print(json.dumps({"success": False, "error": r_status["message"]}))
+            return
+        if not r_status["configured"]:
+            notify("Cloud Sync Failed", "rclone has no remotes configured. Please run 'rclone config'.", glyph="󰅚", urgency="critical")
+            print(json.dumps({"success": False, "error": r_status["message"]}))
+            return
+        if is_sync_running():
+            print(json.dumps({"success": False, "error": "Sync is already in progress"}))
+            return
+        
+        proc = subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "sync-blocking"],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        with open(PID_FILE, "w") as f:
+            f.write(str(proc.pid))
+        
+        st = load_state()
+        st["active"] = True
+        st["status"] = "syncing"
+        st["message"] = "Initializing cloud sync..."
+        save_state(st)
+        
+        print(json.dumps({"success": True, "message": "Structured sync daemon started"}))
+
+    elif cmd in ["stop", "sync-stop", "cancel"]:
+        stop_active_sync()
+        print(json.dumps({"success": True, "message": "Sync stopped"}))
+
+    elif cmd == "sync-blocking":
+        execute_sync_background()
+
+    elif cmd in ["restore", "restore-start"]:
+        dry_run = "--dry-run" in sys.argv
+        t = threading.Thread(target=execute_restore, args=(dry_run,), daemon=False)
+        t.start()
+        print(json.dumps({"success": True, "message": "Restore process started"}))
+
+    elif cmd == "stage-test":
+        cfg = load_config()
+        staging_dir = Path.home() / ".local" / "share" / "omarchy-backup-staging"
+        prepare_staging_directory(staging_dir, cfg)
+        print(f"✔ Staging hierarchy prepared in {staging_dir}:\n")
+        for root, dirs, files in os.walk(staging_dir):
+            level = root.replace(str(staging_dir), "").count(os.sep)
+            if level > 3:
+                continue
+            indent = " " * 4 * level
+            print(f"{indent}📁 {os.path.basename(root)}/")
+            subindent = " " * 4 * (level + 1)
+            for f in files[:8]:
+                print(f"{subindent}📄 {f}")
+            if len(files) > 8:
+                print(f"{subindent}... and {len(files) - 8} more files")
+
+    elif cmd == "toggle-mount":
+        toggle_mount()
+        print(json.dumps({"success": True}))
+
+    elif cmd == "refresh-storage":
+        cfg = load_config()
+        q = get_storage_quota(cfg, force_refresh=True)
+        print(json.dumps(q, indent=2))
+
+    elif cmd in ["list-dirs", "ls-dirs", "browse"]:
+        path_arg = sys.argv[2] if len(sys.argv) > 2 else str(Path.home())
+        data = list_directories(path_arg)
+        print(json.dumps(data, indent=2))
+
+    elif cmd in ["pick-folder", "browse-folder"]:
+        res = pick_folder_gui()
+        print(json.dumps({"success": res}))
+
+    elif cmd in ["pick-menu", "select-folder"]:
+        res = pick_folder_menu()
+        print(json.dumps({"success": res}))
+
+    elif cmd == "add-folder":
+        if len(sys.argv) > 2:
+            path_arg = sys.argv[2]
+            name_arg = sys.argv[3] if len(sys.argv) > 3 else None
+            add_folder(path_arg, name=name_arg)
+        else:
+            print(json.dumps({"success": False, "error": "Missing path argument"}))
+
+    elif cmd == "remove-folder":
+        if len(sys.argv) > 2:
+            remove_folder(sys.argv[2])
+        else:
+            print(json.dumps({"success": False, "error": "Missing folder id/path"}))
+
+    elif cmd == "toggle-folder":
+        if len(sys.argv) > 2:
+            toggle_folder(sys.argv[2])
+        else:
+            print(json.dumps({"success": False, "error": "Missing folder id/path"}))
+
+    elif cmd == "set-remote":
+        if len(sys.argv) > 2:
+            cfg = load_config()
+            cfg["remote"] = sys.argv[2]
+            save_config(cfg)
+            get_storage_quota(cfg, force_refresh=True)
+            print(json.dumps({"success": True, "remote": sys.argv[2]}))
+
+    elif cmd == "set-remote-root":
+        if len(sys.argv) > 2:
+            cfg = load_config()
+            cfg["remote_root"] = sys.argv[2]
+            save_config(cfg)
+            print(json.dumps({"success": True, "remote_root": sys.argv[2]}))
+
+    elif cmd == "set-schedule":
+        if len(sys.argv) > 2:
+            cfg = load_config()
+            cfg["auto_sync_interval_hours"] = int(sys.argv[2])
+            save_config(cfg)
+            print(json.dumps({"success": True, "interval": int(sys.argv[2])}))
+
+    elif cmd in ["set-transfers", "set-concurrency"]:
+        if len(sys.argv) > 2:
+            try:
+                cnt = int(sys.argv[2])
+                if cnt in [4, 8, 16, 24, 32, 64]:
+                    cfg = load_config()
+                    cfg["transfers"] = cnt
+                    save_config(cfg)
+                    append_sync_log(f"Parallel transfer concurrency set to {cnt} streams", level="info")
+                    print(json.dumps({"success": True, "transfers": cnt}))
+                    return
+            except Exception:
+                pass
+        print(json.dumps({"success": False, "error": "Invalid transfers count"}))
+
+    elif cmd == "clear-logs":
+        st = load_state()
+        st["recent_logs"] = []
+        save_state(st)
+        print(json.dumps({"success": True}))
+
+    elif cmd in ["reconnect", "auth-reconnect", "login"]:
+        cfg = load_config()
+        remote = cfg.get("remote", "GDrive")
+        # Launch terminal with rclone config reconnect
+        term_cmd = ["foot", "-T", f"Reconnect {remote}", "rclone", "config", "reconnect", f"{remote}:"]
+        try:
+            subprocess.Popen(term_cmd)
+            print(json.dumps({"success": True, "message": f"Launched reconnect prompt in terminal for {remote}:"}))
+        except Exception as e:
+            print(json.dumps({"success": False, "error": str(e)}))
+
+    elif cmd in ["help", "--help", "-h"]:
+        print("""Usage: omarchy-cloud-sync [command]
+
+Commands:
+  status, --json         Get complete JSON status payload for UI
+  sync-start             Start cloud synchronization in background
+  sync-stop              Cancel active sync
+  restore                Restore files from cloud to original paths
+  stage-test             Test staging directory structure locally
+  refresh-storage        Force refresh remote storage quota
+  toggle-mount           Mount/unmount Google Drive to ~/CloudDrive
+  reconnect              Open interactive terminal to re-authenticate remote OAuth
+  add-folder <path>      Add directory to synced folders (auto-mapped to custom/)
+  remove-folder <id>     Remove folder from synced folders
+  toggle-folder <id>     Enable/disable specific folder sync
+  set-remote <remote>    Set active rclone remote name (e.g. GDrive)
+  set-remote-root <name> Set cloud root folder name (default: Omarchy)
+  set-schedule <hours>   Set auto-sync interval (0=disabled)
+  clear-logs             Clear recent activity logs
+""")
+
+if __name__ == "__main__":
+    main()

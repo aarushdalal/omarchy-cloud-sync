@@ -1,0 +1,13 @@
+[Unit]
+Description=Omarchy Cloud Backup & Sync Runner
+Documentation=https://github.com/YOUR-USERNAME/omarchy-cloud-sync
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/omarchy-cloud-sync sync-blocking
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

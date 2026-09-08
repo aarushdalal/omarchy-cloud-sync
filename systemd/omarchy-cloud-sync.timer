@@ -1,0 +1,11 @@
+[Unit]
+Description=Omarchy Automated Cloud Sync Schedule Timer
+Documentation=https://github.com/YOUR-USERNAME/omarchy-cloud-sync
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,46 @@
+{
+  "remote": "YOUR_RCLONE_REMOTE_NAME",
+  "remote_root": "Backups/Omarchy",
+  "folders": [
+    {
+      "id": "omarchy_config",
+      "name": "Omarchy Shell & Plugins",
+      "category": "config",
+      "path": "$HOME/.config/omarchy",
+      "remote_subpath": "config/omarchy",
+      "enabled": false,
+      "type": "directory"
+    },
+    {
+      "id": "hypr_config",
+      "name": "Hyprland Configuration",
+      "category": "config",
+      "path": "$HOME/.config/hypr",
+      "remote_subpath": "config/hypr",
+      "enabled": false,
+      "type": "directory"
+    },
+    {
+      "id": "terminal_configs",
+      "name": "Terminal Configurations",
+      "category": "config",
+      "path": "$HOME/.config",
+      "subdirs": [
+        "foot",
+        "ghostty",
+        "kitty",
+        "alacritty"
+      ],
+      "remote_subpath": "config/terminals",
+      "enabled": false,
+      "type": "selective"
+    }
+  ],
+  "sync": {
+    "bandwidth_limit": "15M",
+    "checkers": 4,
+    "transfers": 4,
+    "retries": 3,
+    "delete_mode": "backup-dir"
+  }
+}

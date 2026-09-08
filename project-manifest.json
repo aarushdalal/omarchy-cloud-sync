@@ -1,0 +1,29 @@
+{
+  "name": "omarchy-cloud-sync",
+  "id": "daemon0.cloud-sync",
+  "version": "1.0.0",
+  "description": "Cloud backup and synchronization dashboard with optional rclone integration",
+  "author": "Daemon0",
+  "license": "MIT",
+  "repository": "https://github.com/YOUR-USERNAME/omarchy-cloud-sync",
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "compatibility": {
+    "omarchy": "dev (13f18b2c) / 4.0.2",
+    "quickshell": "0.3.1",
+    "hyprland": "0.56.2"
+  },
+  "dependencies": {
+    "required": [
+      "omarchy",
+      "quickshell",
+      "python3",
+      "jq"
+    ],
+    "optional": [
+      "rclone",
+      "systemd"
+    ]
+  }
+}
