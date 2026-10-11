@@ -2,10 +2,11 @@ import QtQuick
 import QtQuick.Layouts
 import qs.Commons
 import qs.Ui
+import "components/polish" as Polish
 import "cards"
 import "services"
 
-KeyboardPanel {
+Polish.RefinedKeyboardPanel {
   id: root
 
   property var syncService: null
@@ -136,7 +137,7 @@ KeyboardPanel {
         color: Style.selectedFillFor(Color.foreground, Color.accent)
 
         Behavior on x {
-          NumberAnimation { duration: 280; easing.type: Easing.OutBack; easing.overshoot: 1.15 }
+          NumberAnimation { duration: Motion.liquidMoveDuration; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot }
         }
       }
 
@@ -162,7 +163,7 @@ KeyboardPanel {
                 ? Style.hoverFillFor(Color.foreground, Color.accent)
                 : "transparent"
 
-              Behavior on color { ColorAnimation { duration: 150 } }
+              Behavior on color { ColorAnimation { duration: Motion.micro } }
 
               Row {
                 anchors.centerIn: parent
@@ -177,8 +178,8 @@ KeyboardPanel {
                   anchors.verticalCenter: parent.verticalCenter
                   scale: tabItem.isSelected ? 1.08 : (tabMouse.containsMouse ? 1.04 : 1.0)
 
-                  Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                  Behavior on color { ColorAnimation { duration: 150 } }
+                  Behavior on scale { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeExpressive } }
+                  Behavior on color { ColorAnimation { duration: Motion.micro } }
                 }
 
                 Text {
@@ -190,7 +191,7 @@ KeyboardPanel {
                   font.bold: tabItem.isSelected
                   anchors.verticalCenter: parent.verticalCenter
 
-                  Behavior on color { ColorAnimation { duration: 150 } }
+                  Behavior on color { ColorAnimation { duration: Motion.micro } }
                 }
               }
 

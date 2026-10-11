@@ -1,11 +1,11 @@
 {
   "name": "omarchy-cloud-sync",
   "id": "daemon0.cloud-sync",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cloud backup and synchronization dashboard with optional rclone integration",
   "author": "Daemon0",
   "license": "MIT",
-  "repository": "https://github.com/YOUR-USERNAME/omarchy-cloud-sync",
+  "repository": "https://github.com/aarushdalal/omarchy-cloud-sync",
   "entryPoints": {
     "barWidget": "BarWidget.qml"
   },

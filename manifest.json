@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "daemon0.cloud-sync",
   "name": "Cloud Sync",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Daemon0",
   "description": "Cloud backup and synchronization dashboard with optional rclone integration",
   "kinds": [

@@ -26,6 +26,12 @@ LOG_FILE = RUNTIME_DIR / "sync.log"
 PID_FILE = RUNTIME_DIR / "sync.pid"
 QUOTA_CACHE_FILE = RUNTIME_DIR / "quota_cache.json"
 
+REQUIRED_SECRET_EXCLUDES = [
+    "*client_secret*.json", "*oauth_creds*.json", "*credentials*.json", "*auth.json",
+    "*cookies*.txt", "*.key", "*.pem", "id_rsa*", "id_ed25519*", "id_ecdsa*",
+    ".env", ".env.*", "*.secret", "*.secrets", "rclone.conf", "identity.pem",
+]
+
 DEFAULT_EXCLUDES = [
     ".git/**",
     "node_modules/**",
@@ -57,7 +63,7 @@ DEFAULT_FOLDERS = [
         "category": "config",
         "path": str(Path.home() / ".config" / "omarchy"),
         "remote_subpath": "config/omarchy",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     },
     {
@@ -66,7 +72,7 @@ DEFAULT_FOLDERS = [
         "category": "config",
         "path": str(Path.home() / ".config" / "hypr"),
         "remote_subpath": "config/hypr",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     },
     {
@@ -76,7 +82,7 @@ DEFAULT_FOLDERS = [
         "path": str(Path.home() / ".config"),
         "subdirs": ["ghostty", "kitty", "alacritty", "foot", "fish", "nvim", "tmux", "lazygit", "btop", "starship.toml", "mise", "voxtype"],
         "remote_subpath": "config/apps",
-        "enabled": True,
+        "enabled": False,
         "type": "selective"
     },
     {
@@ -86,7 +92,7 @@ DEFAULT_FOLDERS = [
         "path": str(Path.home()),
         "files": [".bashrc", ".zshrc", ".profile"],
         "remote_subpath": "dotfiles",
-        "enabled": True,
+        "enabled": False,
         "type": "files"
     },
     {
@@ -95,7 +101,7 @@ DEFAULT_FOLDERS = [
         "category": "system",
         "path": "system",
         "remote_subpath": "system",
-        "enabled": True,
+        "enabled": False,
         "type": "system"
     },
     {
@@ -104,7 +110,7 @@ DEFAULT_FOLDERS = [
         "category": "antigravity",
         "path": str(Path.home() / ".gemini" / "antigravity-cli"),
         "remote_subpath": "antigravity/cli",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     },
     {
@@ -113,7 +119,7 @@ DEFAULT_FOLDERS = [
         "category": "antigravity",
         "path": str(Path.home() / ".gemini" / "antigravity-ide"),
         "remote_subpath": "antigravity/ide",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     },
     {
@@ -122,7 +128,7 @@ DEFAULT_FOLDERS = [
         "category": "antigravity",
         "path": str(Path.home() / ".config" / "Antigravity IDE" / "User"),
         "remote_subpath": "antigravity/ide/user-data",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     },
     {
@@ -131,7 +137,7 @@ DEFAULT_FOLDERS = [
         "category": "antigravity",
         "path": str(Path.home() / ".gemini" / "antigravity"),
         "remote_subpath": "antigravity/gui",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     },
     {
@@ -140,7 +146,7 @@ DEFAULT_FOLDERS = [
         "category": "antigravity",
         "path": str(Path.home() / ".gemini" / "config"),
         "remote_subpath": "antigravity/shared-skills",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     },
     {
@@ -149,7 +155,7 @@ DEFAULT_FOLDERS = [
         "category": "workspace",
         "path": str(Path.home() / "Work"),
         "remote_subpath": "workspace/Work",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     },
     {
@@ -158,7 +164,7 @@ DEFAULT_FOLDERS = [
         "category": "media",
         "path": str(Path.home() / "Wallpapers"),
         "remote_subpath": "media/Wallpapers",
-        "enabled": True,
+        "enabled": False,
         "type": "directory"
     }
 ]
@@ -181,10 +187,10 @@ def ensure_dirs():
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
 
-def load_config():
-    ensure_dirs()
+def load_config(read_only=False):
+    if not read_only: ensure_dirs()
     if not CONFIG_FILE.exists():
-        save_config(DEFAULT_CONFIG)
+        if not read_only: save_config(DEFAULT_CONFIG)
         return DEFAULT_CONFIG.copy()
     try:
         with open(CONFIG_FILE, "r") as f:
@@ -255,7 +261,7 @@ def check_rclone_status(cfg=None):
         out = subprocess.check_output(["rclone", "listremotes"], text=True, timeout=5)
         remotes = [r.strip().rstrip(":") for r in out.strip().splitlines() if r.strip()]
         target_remote = cfg.get("remote", "GDrive") if cfg else "GDrive"
-        configured = len(remotes) > 0 and (target_remote in remotes or len(remotes) > 0)
+        configured = len(remotes) > 0 and target_remote in remotes
         if not remotes:
             return {
                 "installed": True,
@@ -696,7 +702,7 @@ def execute_sync_background():
             if bwlimit and bwlimit != "0":
                 cmd.extend(["--bwlimit", bwlimit])
 
-            for exc in cfg.get("exclude_patterns", []):
+            for exc in sorted(set(cfg.get("exclude_patterns", [])) | set(DEFAULT_EXCLUDES) | set(REQUIRED_SECRET_EXCLUDES)):
                 cmd.extend(["--exclude", exc])
             for exc in extra_ex:
                 cmd.extend(["--exclude", exc])
@@ -855,154 +861,91 @@ def stop_active_sync():
 # ==============================================================================
 
 def execute_restore(dry_run=False):
-    cfg = load_config()
-    remote = cfg.get("remote", "GDrive")
-    remote_root = cfg.get("remote_root", "Omarchy")
-    remote_source = f"{remote}:{remote_root}"
+    """Review paths first; explicit apply uses fresh staging and rollback copies."""
+    import fnmatch
+    import tempfile
+    import re
+    cfg = load_config(read_only=True)
+    home = Path.home().resolve()
+    exclusions = sorted(set(cfg.get("exclude_patterns", [])) | set(DEFAULT_EXCLUDES) | set(REQUIRED_SECRET_EXCLUDES))
+    mappings = []
+    manual = []
+    for folder in cfg.get("folders", []):
+        if not folder.get("enabled") or folder.get("type") == "system": continue
+        relative = Path(folder.get("remote_subpath", ""))
+        destination = Path(os.path.expandvars(os.path.expanduser(folder.get("path", ""))))
+        if relative.is_absolute() or ".." in relative.parts or str(relative) in ("", ".") or not destination.is_absolute():
+            raise ValueError("Invalid restore folder mapping")
+        if not destination.resolve().is_relative_to(home):
+            if folder.get("category") == "system":
+                manual.append({"source": str(relative), "destination": str(destination), "reason": "Privileged restore requires manual review"})
+                continue
+            raise ValueError("Privileged/outside-home restore requires a separate manual plan")
+        kind = folder.get("type", "directory")
+        leaves = folder.get("subdirs", []) if kind == "selective" else folder.get("files", []) if kind == "files" else [""]
+        for leaf in leaves:
+            if Path(leaf).is_absolute() or ".." in Path(leaf).parts: raise ValueError("Invalid restore leaf")
+            mappings.append((relative / leaf, destination / leaf))
+    plan = {"success": True, "mode": "plan", "message": "Review destinations; use restore --apply to download and apply with recovery copies.", "destinations": [{"source": str(source), "destination": str(destination)} for source, destination in mappings]}
+    plan["manual_destinations"] = manual
+    if dry_run:
+        return plan
+    if not mappings: raise ValueError("No enabled user folders are configured for restore")
+    remote = cfg.get("remote", "")
+    if not remote or remote == "YOUR_RCLONE_REMOTE_NAME": raise ValueError("Configure a remote before applying restore")
+    recovery = home / ".local/state/omarchy/restore-recovery" / str(time.time_ns())
+    recovery.mkdir(parents=True, mode=0o700)
+    journal = []
+    signatures = re.compile(rb"-----BEGIN (?:OPENSSH|RSA|EC)? ?PRIVATE KEY-----|\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,}|sk-[A-Za-z0-9_-]{30,}|AIza[A-Za-z0-9_-]{30,})")
+    def secret(path):
+        return any(fnmatch.fnmatch(path.name, pattern) for pattern in REQUIRED_SECRET_EXCLUDES)
+    def atomic_copy(source, destination, mode):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=".restore-", dir=destination.parent)
+        try:
+            with os.fdopen(fd, "wb") as output, source.open("rb") as stream:
+                shutil.copyfileobj(stream, output); output.flush(); os.fsync(output.fileno())
+            os.chmod(temporary, mode)
+            os.replace(temporary, destination)
+        finally: Path(temporary).unlink(missing_ok=True)
+    with tempfile.TemporaryDirectory(prefix="omarchy-restore-") as stage:
+        command = ["rclone", "copy", remote + ":" + cfg.get("remote_root", "Omarchy"), stage, "--transfers", "4"]
+        for exclusion in exclusions: command.extend(["--exclude", exclusion])
+        subprocess.run(command, check=True)
+        staged = Path(stage)
+        operations = {}
+        for relative, destination in mappings:
+            source = staged / relative
+            if not source.exists(): continue
+            candidates = [source] if source.is_file() else list(source.rglob("*"))
+            for item in candidates:
+                if item.is_symlink(): raise ValueError("Restore symlinks require manual review")
+                if not item.is_file() or secret(item): continue
+                target = destination if source.is_file() else destination / item.relative_to(source)
+                if not target.resolve().is_relative_to(home) or any(parent.is_symlink() for parent in [target] + list(target.parents)):
+                    raise ValueError("Restore would cross a symlink or leave the home directory")
+                for candidate in [item] + ([target] if target.is_file() else []):
+                    if candidate.stat().st_size < 8 * 1024 * 1024 and signatures.search(candidate.read_bytes()): raise ValueError("Credential material cannot enter a restore recovery copy")
+                operations[target] = item
+        if not operations: raise ValueError("No configured files were downloaded; nothing restored")
+        try:
+            for target, source in operations.items():
+                previous = recovery / "files" / target.relative_to(home)
+                original = target.is_file()
+                mode = target.stat().st_mode & 0o777 if original else (0o755 if target.parent == home/".local/bin" else 0o644)
+                if original:
+                    previous.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(target, previous)
+                journal.append({"target": str(target), "previous": str(previous) if original else None, "mode": mode})
+                (recovery / "journal.json").write_text(json.dumps(journal, indent=2))
+                atomic_copy(source, target, mode)
+        except Exception:
+            for entry in reversed(journal):
+                if entry["previous"]: atomic_copy(Path(entry["previous"]), Path(entry["target"]), entry["mode"])
+                else: Path(entry["target"]).unlink(missing_ok=True)
+            raise
+    return {"success": True, "mode": "applied", "message": "Restore completed with recovery copies.", "files": len(journal), "recovery": str(recovery)}
 
-    staging_dir = Path.home() / ".local" / "share" / "omarchy-backup-staging"
-    staging_dir.mkdir(parents=True, exist_ok=True)
-
-    append_sync_log(f"Starting restore from {remote_source}...", level="info")
-    notify("Cloud Restore Started", f"Fetching structured backup from {remote_source}...")
-
-    if not dry_run:
-        # Step 1: Pull from cloud to staging
-        cmd = ["rclone", "sync", remote_source, str(staging_dir), "--fast-list", "--transfers", "4"]
-        res = subprocess.run(cmd)
-        if res.returncode != 0:
-            append_sync_log("Failed to download backup from cloud.", level="error")
-            notify("Restore Failed", "Could not download backup from cloud.", icon="dialog-error")
-            return False
-
-    home = Path.home()
-
-    # Step 2: Restore config/omarchy
-    src_omarchy = staging_dir / "config" / "omarchy"
-    if src_omarchy.exists():
-        dst = home / ".config" / "omarchy"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_omarchy}/", f"{dst}/"])
-
-    # Step 3: Restore config/hypr
-    src_hypr = staging_dir / "config" / "hypr"
-    if src_hypr.exists():
-        dst = home / ".config" / "hypr"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_hypr}/", f"{dst}/"])
-
-    # Step 4: Restore config/apps
-    src_apps = staging_dir / "config" / "apps"
-    if src_apps.exists():
-        dst = home / ".config"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_apps}/", f"{dst}/"])
-
-    # Step 5: Restore dotfiles
-    src_dotfiles = staging_dir / "dotfiles"
-    if src_dotfiles.exists():
-        for f in src_dotfiles.iterdir():
-            if f.is_file() and not dry_run:
-                shutil.copy2(f, home / f.name)
-
-    # Step 6: Restore workspace/Work
-    src_work = staging_dir / "workspace" / "Work"
-    if src_work.exists():
-        dst = home / "Work"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_work}/", f"{dst}/"])
-
-    # Step 7: Restore media/Wallpapers
-    src_wall = staging_dir / "media" / "Wallpapers"
-    if src_wall.exists():
-        dst = home / "Wallpapers"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_wall}/", f"{dst}/"])
-
-    # Step 8: Restore custom folders
-    src_custom = staging_dir / "custom"
-    if src_custom.exists():
-        for custom_sub in src_custom.iterdir():
-            if custom_sub.is_dir() and not dry_run:
-                dst = home / custom_sub.name
-                dst.mkdir(parents=True, exist_ok=True)
-                subprocess.run(["rsync", "-a", f"{custom_sub}/", f"{dst}/"])
-
-    # Step 9: Restore Antigravity components
-    # 9a. Antigravity CLI
-    src_ag_cli = staging_dir / "antigravity" / "cli"
-    if src_ag_cli.exists():
-        dst = home / ".gemini" / "antigravity-cli"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_ag_cli}/", f"{dst}/"])
-
-    # 9b. Antigravity IDE Memory
-    src_ag_ide = staging_dir / "antigravity" / "ide"
-    if src_ag_ide.exists():
-        dst = home / ".gemini" / "antigravity-ide"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", "--exclude", "user-data", f"{src_ag_ide}/", f"{dst}/"])
-
-    # 9c. Antigravity IDE User Data
-    src_ag_ide_user = staging_dir / "antigravity" / "ide" / "user-data"
-    if src_ag_ide_user.exists():
-        dst = home / ".config" / "Antigravity IDE" / "User"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_ag_ide_user}/", f"{dst}/"])
-
-    # 9d. Antigravity GUI
-    src_ag_gui = staging_dir / "antigravity" / "gui"
-    if src_ag_gui.exists():
-        dst = home / ".gemini" / "antigravity"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_ag_gui}/", f"{dst}/"])
-
-    # 9e. Antigravity Shared Skills & Rules
-    src_ag_skills = staging_dir / "antigravity" / "shared-skills"
-    if src_ag_skills.exists():
-        dst = home / ".gemini" / "config"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_ag_skills}/", f"{dst}/"])
-
-    # Step 10: Restore Custom User Scripts (~/.local/bin)
-    src_scripts = staging_dir / "scripts" / "local-bin"
-    if src_scripts.exists():
-        dst = home / ".local" / "bin"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_scripts}/", f"{dst}/"])
-            subprocess.run(f"chmod +x '{dst}'/* 2>/dev/null || true", shell=True)
-
-    # Step 11: Restore Systemd User Units (~/.config/systemd)
-    src_systemd = staging_dir / "config" / "systemd"
-    if src_systemd.exists():
-        dst = home / ".config" / "systemd"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_systemd}/", f"{dst}/"])
-            subprocess.run(["systemctl", "--user", "daemon-reload"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    # Step 12: Restore EasyEffects DSP Presets (~/.local/share/easyeffects)
-    src_ee = staging_dir / "config" / "easyeffects"
-    if src_ee.exists():
-        dst = home / ".local" / "share" / "easyeffects"
-        dst.mkdir(parents=True, exist_ok=True)
-        if not dry_run:
-            subprocess.run(["rsync", "-a", f"{src_ee}/", f"{dst}/"])
-
-    append_sync_log("Cloud restore finished successfully! ✔", level="success")
-    notify("Cloud Restore Complete", "All configurations, Antigravity memories, and files restored successfully.")
-    return True
 
 def toggle_mount():
     cfg = load_config()
@@ -1353,13 +1296,13 @@ def main():
         return
 
     if cmd in ["sync", "sync-start", "start"]:
-        r_status = check_rclone_status()
+        r_status = check_rclone_status(load_config())
         if not r_status["installed"]:
-            notify("Cloud Sync Failed", "rclone is not installed. Please run 'sudo pacman -S rclone'.", glyph="󰅚", urgency="critical")
+            notify("Cloud Sync Failed", "rclone is not installed. Please run 'sudo pacman -S rclone'.", icon="dialog-error", urgency="critical")
             print(json.dumps({"success": False, "error": r_status["message"]}))
             return
         if not r_status["configured"]:
-            notify("Cloud Sync Failed", "rclone has no remotes configured. Please run 'rclone config'.", glyph="󰅚", urgency="critical")
+            notify("Cloud Sync Failed", "rclone has no remotes configured. Please run 'rclone config'.", icon="dialog-error", urgency="critical")
             print(json.dumps({"success": False, "error": r_status["message"]}))
             return
         if is_sync_running():
@@ -1391,10 +1334,12 @@ def main():
         execute_sync_background()
 
     elif cmd in ["restore", "restore-start"]:
-        dry_run = "--dry-run" in sys.argv
-        t = threading.Thread(target=execute_restore, args=(dry_run,), daemon=False)
-        t.start()
-        print(json.dumps({"success": True, "message": "Restore process started"}))
+        try:
+            result = execute_restore(dry_run="--apply" not in sys.argv or "--dry-run" in sys.argv)
+            print(json.dumps(result))
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            print(json.dumps({"success": False, "message": str(error)}))
+            sys.exit(1)
 
     elif cmd == "stage-test":
         cfg = load_config()
@@ -1516,7 +1461,7 @@ Commands:
   status, --json         Get complete JSON status payload for UI
   sync-start             Start cloud synchronization in background
   sync-stop              Cancel active sync
-  restore                Restore files from cloud to original paths
+  restore [--apply]      Restore files from cloud to original paths
   stage-test             Test staging directory structure locally
   refresh-storage        Force refresh remote storage quota
   toggle-mount           Mount/unmount Google Drive to ~/CloudDrive

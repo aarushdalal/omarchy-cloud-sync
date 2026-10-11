@@ -210,3 +210,7 @@ This project is licensed under the [MIT License](LICENSE).
 - Built for the [Omarchy](https://github.com/basecamp/omarchy) desktop environment.
 - Powered by [Quickshell](https://quickshell.outfoxxed.me/), [Hyprland](https://hyprland.org/), and [rclone](https://rclone.org/).
 - Not an official Omarchy product.
+
+## Refinement and privacy update
+
+Backup coverage · clear status · reviewable restore. Current showcases use sample data; see [release privacy](docs/RELEASE-PRIVACY.md). Existing Git history is preserved.
