@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0] - 2026-11-02
+
+- Refine GSync with compact accessible tabs, short directional crossfades and balanced theme-colored glass.
+- Guard hidden/reduced-motion visual updates and bound tab indices; retain all existing sections and backend operations.
+- Qualify palette references for current Qt compatibility and add native real-card compilation plus isolated keyboard/wheel/reduced-motion checks.
+
 ## [1.1.0] - 2026-10-11
 
 - Preset-aware dashboard, review-first restore with custom mappings and rollback copies, mandatory credential exclusions, opt-in new backup folders and truthful failure status.

@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -99,9 +100,9 @@ Rectangle {
     width: parent.width - Style.space(20)
     height: parent.height - Style.space(20)
     radius: Style.cornerRadius + 2
-    color: Style.selectedFillFor(Color.foreground, Color.accent)
+    color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
     border.width: 1
-    border.color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.2)
+    border.color: Qt.rgba(OmarchyPalette.Color.foreground.r, OmarchyPalette.Color.foreground.g, OmarchyPalette.Color.foreground.b, 0.2)
     clip: true
 
     scale: root.isOpen ? 1.0 : 0.94
@@ -125,14 +126,14 @@ Rectangle {
           spacing: Style.space(6)
           Text {
             text: "󰉋"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: (Style.font && Style.font.family) ? Style.font.family : ""
             font.pixelSize: 15
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
             text: "Select Folder to Sync"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: (Style.font && Style.font.family) ? Style.font.family : ""
             font.pixelSize: 12
             font.bold: true
@@ -147,7 +148,7 @@ Rectangle {
           height: Style.space(26)
           width: sysDlgText.implicitWidth + Style.space(14)
           radius: Style.cornerRadius - 2
-          color: sysDlgMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.normalFillFor(Color.foreground, Color.accent)
+          color: sysDlgMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
           Row {
             id: sysDlgText
@@ -155,14 +156,14 @@ Rectangle {
             spacing: 4
             Text {
               text: "󰍹"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: (Style.font && Style.font.family) ? Style.font.family : ""
               font.pixelSize: 11
               anchors.verticalCenter: parent.verticalCenter
             }
             Text {
               text: "System Dialog"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: (Style.font && Style.font.family) ? Style.font.family : ""
               font.pixelSize: 10
               font.bold: true
@@ -187,12 +188,12 @@ Rectangle {
           width: Style.space(26)
           height: Style.space(26)
           radius: Style.cornerRadius - 2
-          color: closeMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : "transparent"
+          color: closeMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : "transparent"
 
           Text {
             anchors.centerIn: parent
             text: "󰅖"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: (Style.font && Style.font.family) ? Style.font.family : ""
             font.pixelSize: 11
             font.bold: true
@@ -230,8 +231,8 @@ Rectangle {
             radius: Style.cornerRadius - 3
             readonly property bool isCurrent: root.currentPath === modelData.path
             color: isCurrent
-              ? Color.accent
-              : (qMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.normalFillFor(Color.foreground, Color.accent))
+              ? OmarchyPalette.Color.accent
+              : (qMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent))
 
             Row {
               id: qText
@@ -240,7 +241,7 @@ Rectangle {
 
               Text {
                 text: modelData.icon
-                color: isCurrent ? (Style.isLight ? "#ffffff" : "#000000") : Color.accent
+                color: isCurrent ? (Style.isLight ? "#ffffff" : "#000000") : OmarchyPalette.Color.accent
                 font.family: (Style.font && Style.font.family) ? Style.font.family : ""
                 font.pixelSize: 10
                 anchors.verticalCenter: parent.verticalCenter
@@ -248,7 +249,7 @@ Rectangle {
 
               Text {
                 text: modelData.label
-                color: isCurrent ? (Style.isLight ? "#ffffff" : "#000000") : Color.foreground
+                color: isCurrent ? (Style.isLight ? "#ffffff" : "#000000") : OmarchyPalette.Color.foreground
                 font.family: (Style.font && Style.font.family) ? Style.font.family : ""
                 font.pixelSize: 9
                 font.bold: isCurrent
@@ -274,7 +275,7 @@ Rectangle {
         Layout.fillWidth: true
         height: Style.space(34)
         radius: Style.cornerRadius - 2
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         RowLayout {
           anchors.fill: parent
@@ -288,7 +289,7 @@ Rectangle {
             height: Style.space(26)
             radius: Style.cornerRadius - 3
             enabled: root.parentPath !== "" && root.parentPath !== root.currentPath
-            color: upMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.selectedFillFor(Color.foreground, Color.accent)
+            color: upMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
             opacity: enabled ? 1.0 : 0.4
 
             Text {
@@ -331,14 +332,14 @@ Rectangle {
                     radius: Style.cornerRadius - 4
                     readonly property bool isLast: index === root.breadcrumbs.length - 1
                     color: isLast
-                      ? Style.hoverFillFor(Color.foreground, Color.accent)
-                      : (bMouse.containsMouse ? Style.selectedFillFor(Color.foreground, Color.accent) : "transparent")
+                      ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+                      : (bMouse.containsMouse ? Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : "transparent")
 
                     Text {
                       id: bText
                       anchors.centerIn: parent
                       text: modelData.name || ""
-                      color: isLast ? Color.accent : Color.foreground
+                      color: isLast ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
                       font.family: (Style.font && Style.font.family) ? Style.font.family : ""
                       font.pixelSize: 10
                       font.bold: isLast
@@ -356,7 +357,7 @@ Rectangle {
                   Text {
                     visible: index < root.breadcrumbs.length - 1
                     text: "/"
-                    color: Qt.darker(Color.foreground, 2.2)
+                    color: Qt.darker(OmarchyPalette.Color.foreground, 2.2)
                     font.pixelSize: 10
                     anchors.verticalCenter: parent.verticalCenter
                   }
@@ -372,7 +373,7 @@ Rectangle {
         Layout.fillWidth: true
         height: Style.space(28)
         radius: Style.cornerRadius - 2
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         RowLayout {
           anchors.fill: parent
@@ -382,7 +383,7 @@ Rectangle {
 
           Text {
             text: "󰍉"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: (Style.font && Style.font.family) ? Style.font.family : ""
             font.pixelSize: 12
           }
@@ -391,7 +392,7 @@ Rectangle {
             id: filterInput
             Layout.fillWidth: true
             verticalAlignment: TextInput.AlignVCenter
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: (Style.font && Style.font.family) ? Style.font.family : ""
             font.pixelSize: 10
             selectByMouse: true
@@ -401,7 +402,7 @@ Rectangle {
               anchors.fill: parent
               verticalAlignment: Text.AlignVCenter
               text: "Filter subfolders..."
-              color: Qt.darker(Color.foreground, 2.0)
+              color: Qt.darker(OmarchyPalette.Color.foreground, 2.0)
               font.family: (Style.font && Style.font.family) ? Style.font.family : ""
               font.pixelSize: 10
               visible: !filterInput.text && !filterInput.activeFocus
@@ -419,7 +420,7 @@ Rectangle {
         Layout.fillWidth: true
         Layout.fillHeight: true
         radius: Style.cornerRadius - 2
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
         clip: true
 
         ListView {
@@ -438,7 +439,7 @@ Rectangle {
             width: dirList.width - Style.space(8)
             height: Style.space(34)
             radius: Style.cornerRadius - 3
-            color: dMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : "transparent"
+            color: dMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : "transparent"
 
             RowLayout {
               anchors.fill: parent
@@ -448,7 +449,7 @@ Rectangle {
 
               Text {
                 text: "󰉋"
-                color: Color.accent
+                color: OmarchyPalette.Color.accent
                 font.family: (Style.font && Style.font.family) ? Style.font.family : ""
                 font.pixelSize: 13
               }
@@ -456,7 +457,7 @@ Rectangle {
               Text {
                 Layout.fillWidth: true
                 text: modelData.name || ""
-                color: Color.foreground
+                color: OmarchyPalette.Color.foreground
                 font.family: (Style.font && Style.font.family) ? Style.font.family : ""
                 font.pixelSize: 11
                 elide: Text.ElideRight
@@ -464,7 +465,7 @@ Rectangle {
 
               Text {
                 text: "›"
-                color: Qt.darker(Color.foreground, 2.0)
+                color: Qt.darker(OmarchyPalette.Color.foreground, 2.0)
                 font.family: (Style.font && Style.font.family) ? Style.font.family : ""
                 font.pixelSize: 14
               }
@@ -488,7 +489,7 @@ Rectangle {
             anchors.centerIn: parent
             visible: !root.isLoading && root.filteredDirectories.length === 0
             text: (root.searchFilter !== "") ? "No matching folders found" : "No subfolders in this directory"
-            color: Qt.darker(Color.foreground, 2.0)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 2.0)
             font.family: (Style.font && Style.font.family) ? Style.font.family : ""
             font.pixelSize: 10
           }
@@ -500,7 +501,7 @@ Rectangle {
         Layout.fillWidth: true
         height: Style.space(44)
         radius: Style.cornerRadius - 2
-        color: Style.normalFillFor(Color.foreground, Color.accent)
+        color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
         RowLayout {
           anchors.fill: parent
@@ -514,7 +515,7 @@ Rectangle {
 
             Text {
               text: "Selected Path:"
-              color: Qt.darker(Color.foreground, 1.8)
+              color: Qt.darker(OmarchyPalette.Color.foreground, 1.8)
               font.family: (Style.font && Style.font.family) ? Style.font.family : ""
               font.pixelSize: 8
             }
@@ -522,7 +523,7 @@ Rectangle {
             Text {
               Layout.fillWidth: true
               text: root.currentPath
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: (Style.font && Style.font.family) ? Style.font.family : ""
               font.pixelSize: 10
               font.bold: true
@@ -535,12 +536,12 @@ Rectangle {
             width: Style.space(64)
             height: Style.space(30)
             radius: Style.cornerRadius - 3
-            color: cancelMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.selectedFillFor(Color.foreground, Color.accent)
+            color: cancelMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
             Text {
               anchors.centerIn: parent
               text: "Cancel"
-              color: Color.foreground
+              color: OmarchyPalette.Color.foreground
               font.family: (Style.font && Style.font.family) ? Style.font.family : ""
               font.pixelSize: 10
             }
@@ -559,7 +560,7 @@ Rectangle {
             width: Style.space(136)
             height: Style.space(30)
             radius: Style.cornerRadius - 3
-            color: selMouse.containsMouse ? Style.selectedFillFor(Color.foreground, Color.accent) : Color.accent
+            color: selMouse.containsMouse ? Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : OmarchyPalette.Color.accent
             scale: selMouse.pressed ? 0.96 : 1.0
 
             Behavior on scale { NumberAnimation { duration: 100 } }

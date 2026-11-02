@@ -2,10 +2,12 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import qs.Commons
+import qs.Commons as OmarchyPalette
 import qs.Ui
 
 PopupWindow {
   id: root
+  property real surfaceOpacity: 0.94
 
   required property Item anchorItem
   required property QtObject bar
@@ -14,7 +16,7 @@ PopupWindow {
   property int padding: Style.spacing.popupPadding
   property int contentWidth: Style.space(280)
   property int contentHeight: Style.space(200)
-  property color borderColor: Color.popups.border
+  property color borderColor: OmarchyPalette.Color.popups.border
   property var borderSpec: Border.none()
   property bool open: false
   property bool centerOnBar: false
@@ -153,7 +155,7 @@ PopupWindow {
   BorderSurface {
     id: card
     anchors.fill: parent
-    color: Theme.surface
+    color: Qt.rgba(OmarchyPalette.Color.background.r, OmarchyPalette.Color.background.g, OmarchyPalette.Color.background.b, root.surfaceOpacity)
     borderSpec: (root.borderSpec && root.borderSpec.type !== "none") ? root.borderSpec : Border.surfaceSpec("popups", "border", Theme.borderSubtle, 1)
     padding: root.padding
     radius: Theme.radiusLarge

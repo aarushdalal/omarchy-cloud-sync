@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -19,7 +20,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(58)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       ColumnLayout {
         anchors.fill: parent
@@ -31,7 +32,7 @@ Item {
 
           Text {
             text: "󰒓 Active Remote & Root Folder"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             font.bold: true
@@ -44,13 +45,13 @@ Item {
             height: Style.space(18)
             width: rootDirText.implicitWidth + Style.space(10)
             radius: Style.cornerRadius - 4
-            color: Qt.darker(Style.selectedFillFor(Color.foreground, Color.accent), 1.2)
+            color: Qt.darker(Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent), 1.2)
 
             Text {
               id: rootDirText
               anchors.centerIn: parent
               text: "Root: " + (root.syncService ? root.syncService.remoteRoot : "Omarchy")
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: 8
               font.bold: true
@@ -71,14 +72,14 @@ Item {
               radius: Style.cornerRadius - 3
               readonly property bool isSelected: root.syncService && (root.syncService.selectedRemote === modelData)
               color: isSelected
-                ? Color.accent
-                : (rMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.selectedFillFor(Color.foreground, Color.accent))
+                ? OmarchyPalette.Color.accent
+                : (rMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent))
 
               Text {
                 id: remText
                 anchors.centerIn: parent
                 text: "󰅟 " + modelData
-                color: isSelected ? Color.menu.background : Color.foreground
+                color: isSelected ? OmarchyPalette.Color.menu.background : OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: isSelected
@@ -104,7 +105,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(58)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       ColumnLayout {
         anchors.fill: parent
@@ -113,7 +114,7 @@ Item {
 
         Text {
           text: "⏰ Auto-Sync Schedule"
-          color: Color.foreground
+          color: OmarchyPalette.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           font.bold: true
@@ -137,14 +138,14 @@ Item {
               radius: Style.cornerRadius - 3
               readonly property bool isSelected: root.syncService && (root.syncService.autoSyncIntervalHours === modelData.hours)
               color: isSelected
-                ? Color.accent
-                : (sMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.selectedFillFor(Color.foreground, Color.accent))
+                ? OmarchyPalette.Color.accent
+                : (sMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent))
 
               Text {
                 id: schedText
                 anchors.centerIn: parent
                 text: modelData.label
-                color: isSelected ? Color.menu.background : Color.foreground
+                color: isSelected ? OmarchyPalette.Color.menu.background : OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: isSelected
@@ -170,7 +171,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(58)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       ColumnLayout {
         anchors.fill: parent
@@ -181,7 +182,7 @@ Item {
           Layout.fillWidth: true
           Text {
             text: "󰓦 Concurrency Streams"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             font.bold: true
@@ -189,7 +190,7 @@ Item {
           Item { Layout.fillWidth: true }
           Text {
             text: (root.syncService ? root.syncService.transfers : 16) + " Streams"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: Style.font.caption - 1
             font.bold: true
@@ -214,14 +215,14 @@ Item {
               radius: Style.cornerRadius - 3
               readonly property bool isSelected: root.syncService && (root.syncService.transfers === modelData.count)
               color: isSelected
-                ? Color.accent
-                : (tMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.selectedFillFor(Color.foreground, Color.accent))
+                ? OmarchyPalette.Color.accent
+                : (tMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent))
 
               Text {
                 id: transText
                 anchors.centerIn: parent
                 text: modelData.label
-                color: isSelected ? Color.menu.background : Color.foreground
+                color: isSelected ? OmarchyPalette.Color.menu.background : OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: isSelected
@@ -247,7 +248,7 @@ Item {
       Layout.fillWidth: true
       Layout.fillHeight: true
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
       clip: true
 
       ColumnLayout {
@@ -257,7 +258,7 @@ Item {
 
         Text {
           text: "󰞌 Excluded Filter Patterns"
-          color: Color.foreground
+          color: OmarchyPalette.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall
           font.bold: true
@@ -274,13 +275,13 @@ Item {
               height: Style.space(20)
               width: excText.implicitWidth + Style.space(12)
               radius: Style.cornerRadius - 4
-              color: Style.selectedFillFor(Color.foreground, Color.accent)
+              color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
               Text {
                 id: excText
                 anchors.centerIn: parent
                 text: modelData
-                color: Qt.darker(Color.foreground, 1.4)
+                color: Qt.darker(OmarchyPalette.Color.foreground, 1.4)
                 font.family: Style.font.family
                 font.pixelSize: 8
               }
@@ -298,7 +299,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredWidth: 0
             text: "Transfers: " + (root.syncService ? root.syncService.transfers : 16) + " • Pacer: 10ms Turbo • Engine: Rclone v1.70.2"
-            color: Qt.darker(Color.foreground, 1.8)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.8)
             font.family: Style.font.family
             font.pixelSize: 8
             elide: Text.ElideRight

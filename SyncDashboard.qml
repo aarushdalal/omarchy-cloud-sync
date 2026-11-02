@@ -12,9 +12,13 @@ Polish.RefinedKeyboardPanel {
   property var syncService: null
   property int activeTabIndex: 0 // 0: Overview, 1: Folders, 2: Activity, 3: Settings
   property bool anchorHovered: false
+  onActiveTabIndexChanged: {
+    var bounded = Math.max(0, Math.min(3, activeTabIndex))
+    if (activeTabIndex !== bounded) activeTabIndex = bounded
+  }
 
   contentWidth: Style.space(560)
-  contentHeight: Style.space(430)
+  contentHeight: Style.space(438)
   borderSpec: Border.none()
   focusTarget: mainCanvas
 
@@ -90,7 +94,7 @@ Polish.RefinedKeyboardPanel {
         root.close()
         event.accepted = true
       } else if (event.key === Qt.Key_Tab) {
-        root.activeTabIndex = (root.activeTabIndex + 1) % 4
+        root.activeTabIndex = (root.activeTabIndex + (event.modifiers & Qt.ShiftModifier ? 3 : 1)) % 4
         event.accepted = true
       } else if (event.key === Qt.Key_1) {
         root.activeTabIndex = 0
@@ -108,107 +112,20 @@ Polish.RefinedKeyboardPanel {
     }
 
     // Top Segmented Tab Switcher with Gliding Pill Indicator
-    Rectangle {
+    Polish.DashboardTabs {
       id: tabSwitcher
-      anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.top: parent.top
-      height: Style.space(40)
-      radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
-
-      readonly property var tabs: [
+      anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+      height: implicitHeight
+      title: "GSync"
+      currentIndex: root.activeTabIndex
+      motionEnabled: root.open
+      tabs: [
         { icon: "󰅟", label: "Overview", index: 0 },
         { icon: "󰉋", label: "Folders", index: 1 },
         { icon: "󰓦", label: "Activity", index: 2 },
         { icon: "󰒓", label: "Settings", index: 3 }
       ]
-
-      readonly property real singleTabWidth: (tabSwitcher.width - Style.space(6) - (tabSwitcher.tabs.length - 1) * Style.space(4)) / tabSwitcher.tabs.length
-
-      // Smooth Sliding Active Pill Indicator
-      Rectangle {
-        id: activePill
-        y: Style.space(3)
-        height: tabSwitcher.height - Style.space(6)
-        width: tabSwitcher.singleTabWidth
-        x: Style.space(3) + root.activeTabIndex * (tabSwitcher.singleTabWidth + Style.space(4))
-        radius: Style.cornerRadius - 2
-        color: Style.selectedFillFor(Color.foreground, Color.accent)
-
-        Behavior on x {
-          NumberAnimation { duration: Motion.liquidMoveDuration; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot }
-        }
-      }
-
-      Row {
-        id: tabsRow
-        anchors.fill: parent
-        anchors.margins: Style.space(3)
-        spacing: Style.space(4)
-
-        Repeater {
-          model: tabSwitcher.tabs
-
-          Item {
-            id: tabItem
-            width: tabSwitcher.singleTabWidth
-            height: tabsRow.height
-            readonly property bool isSelected: root.activeTabIndex === modelData.index
-
-            Rectangle {
-              anchors.fill: parent
-              radius: Style.cornerRadius - 2
-              color: tabMouse.containsMouse && !tabItem.isSelected
-                ? Style.hoverFillFor(Color.foreground, Color.accent)
-                : "transparent"
-
-              Behavior on color { ColorAnimation { duration: Motion.micro } }
-
-              Row {
-                anchors.centerIn: parent
-                spacing: Style.space(6)
-
-                Text {
-                  id: iconText
-                  text: modelData.icon
-                  color: tabItem.isSelected ? Color.accent : Color.foreground
-                  font.family: Style.font.family
-                  font.pixelSize: 11
-                  anchors.verticalCenter: parent.verticalCenter
-                  scale: tabItem.isSelected ? 1.08 : (tabMouse.containsMouse ? 1.04 : 1.0)
-
-                  Behavior on scale { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeExpressive } }
-                  Behavior on color { ColorAnimation { duration: Motion.micro } }
-                }
-
-                Text {
-                  id: labelText
-                  text: modelData.label
-                  color: tabItem.isSelected ? Color.accent : Color.foreground
-                  font.family: Style.font.family
-                  font.pixelSize: 11
-                  font.bold: tabItem.isSelected
-                  anchors.verticalCenter: parent.verticalCenter
-
-                  Behavior on color { ColorAnimation { duration: Motion.micro } }
-                }
-              }
-
-              MouseArea {
-                id: tabMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.activeTabIndex = modelData.index
-                onWheel: function(wheel) {
-                  root.handleWheel(wheel)
-                }
-              }
-            }
-          }
-        }
-      }
+      onSelectionRequested: function(index) { root.activeTabIndex = index }
     }
 
     // Horizontal Sliding Carousel Stack with Smooth Transitions
@@ -222,17 +139,12 @@ Polish.RefinedKeyboardPanel {
       clip: true
 
       // Card 0: Overview
-      Item {
+      Polish.DashboardPage {
         width: carouselStack.width
         height: carouselStack.height
-        x: (0 - root.activeTabIndex) * carouselStack.width
-        scale: root.activeTabIndex === 0 ? 1.0 : 0.95
-        opacity: Math.max(0.0, 1.0 - Math.abs(0 - root.activeTabIndex) * 0.8)
-        visible: Math.abs(0 - root.activeTabIndex) <= 1
-
-        Behavior on x { NumberAnimation { duration: Motion.entryDuration; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot } }
-        Behavior on scale { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot } }
-        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+        pageIndex: 0; selectedIndex: root.activeTabIndex
+        motionEnabled: root.open && !Polish.MotionAdapter.reducedMotion
+        enabled: selected && root.open
 
         OverviewCard {
           anchors.fill: parent
@@ -241,17 +153,12 @@ Polish.RefinedKeyboardPanel {
       }
 
       // Card 1: Folders
-      Item {
+      Polish.DashboardPage {
         width: carouselStack.width
         height: carouselStack.height
-        x: (1 - root.activeTabIndex) * carouselStack.width
-        scale: root.activeTabIndex === 1 ? 1.0 : 0.95
-        opacity: Math.max(0.0, 1.0 - Math.abs(1 - root.activeTabIndex) * 0.8)
-        visible: Math.abs(1 - root.activeTabIndex) <= 1
-
-        Behavior on x { NumberAnimation { duration: Motion.entryDuration; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot } }
-        Behavior on scale { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot } }
-        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+        pageIndex: 1; selectedIndex: root.activeTabIndex
+        motionEnabled: root.open && !Polish.MotionAdapter.reducedMotion
+        enabled: selected && root.open
 
         FoldersCard {
           anchors.fill: parent
@@ -261,17 +168,12 @@ Polish.RefinedKeyboardPanel {
       }
 
       // Card 2: Activity
-      Item {
+      Polish.DashboardPage {
         width: carouselStack.width
         height: carouselStack.height
-        x: (2 - root.activeTabIndex) * carouselStack.width
-        scale: root.activeTabIndex === 2 ? 1.0 : 0.95
-        opacity: Math.max(0.0, 1.0 - Math.abs(2 - root.activeTabIndex) * 0.8)
-        visible: Math.abs(2 - root.activeTabIndex) <= 1
-
-        Behavior on x { NumberAnimation { duration: Motion.entryDuration; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot } }
-        Behavior on scale { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot } }
-        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+        pageIndex: 2; selectedIndex: root.activeTabIndex
+        motionEnabled: root.open && !Polish.MotionAdapter.reducedMotion
+        enabled: selected && root.open
 
         ActivityCard {
           anchors.fill: parent
@@ -280,17 +182,12 @@ Polish.RefinedKeyboardPanel {
       }
 
       // Card 3: Settings
-      Item {
+      Polish.DashboardPage {
         width: carouselStack.width
         height: carouselStack.height
-        x: (3 - root.activeTabIndex) * carouselStack.width
-        scale: root.activeTabIndex === 3 ? 1.0 : 0.95
-        opacity: Math.max(0.0, 1.0 - Math.abs(3 - root.activeTabIndex) * 0.8)
-        visible: Math.abs(3 - root.activeTabIndex) <= 1
-
-        Behavior on x { NumberAnimation { duration: Motion.entryDuration; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot } }
-        Behavior on scale { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeExpressive; easing.overshoot: Motion.springOvershoot } }
-        Behavior on opacity { NumberAnimation { duration: Motion.standard; easing.type: Motion.easeStandard } }
+        pageIndex: 3; selectedIndex: root.activeTabIndex
+        motionEnabled: root.open && !Polish.MotionAdapter.reducedMotion
+        enabled: selected && root.open
 
         SettingsCard {
           anchors.fill: parent

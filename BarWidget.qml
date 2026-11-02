@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 import "services"
@@ -20,6 +21,7 @@ BarWidget {
     function open(): void { root.open() }
     function close(): void { root.close() }
     function toggle(): void { root.toggle() }
+    function status(): string { return JSON.stringify({uiRevision:"minimal-glass-20261102", open:dashboard.open, tab:dashboard.activeTabIndex, surfaceOpacity:dashboard.surfaceOpacity}) }
   }
 
   // Popup open/close shape contract for shell/bar
@@ -39,10 +41,10 @@ BarWidget {
     height: Math.max(14, root.barSize - Style.space(2))
     radius: Style.cornerRadius
     color: islandMouse.containsMouse
-      ? Style.hoverFillFor(root.bar ? root.bar.barForeground : Color.bar.text, Color.accent)
+      ? Style.hoverFillFor(root.bar ? root.bar.barForeground : OmarchyPalette.Color.bar.text, OmarchyPalette.Color.accent)
       : (root.opened || syncService.active
-          ? Style.selectedFillFor(root.bar ? root.bar.barForeground : Color.bar.text, Color.accent)
-          : Style.normalFillFor(root.bar ? root.bar.barForeground : Color.bar.text, Color.accent))
+          ? Style.selectedFillFor(root.bar ? root.bar.barForeground : OmarchyPalette.Color.bar.text, OmarchyPalette.Color.accent)
+          : Style.normalFillFor(root.bar ? root.bar.barForeground : OmarchyPalette.Color.bar.text, OmarchyPalette.Color.accent))
     borderSpec: Border.none()
     border.width: 0
     scale: islandMouse.pressed ? Motion.pressScale : (islandMouse.containsMouse ? (1.0 + 0.04 * Motion.springOvershoot) : 1.0)
@@ -79,8 +81,8 @@ BarWidget {
                       ? "󰓦"
                       : (syncService.authError ? "󰅙" : "󰅟")))
             color: (!syncService.rcloneInstalled || !syncService.rcloneConfigured || syncService.authError)
-              ? Color.urgent
-              : (syncService.active ? Color.accent : (root.bar ? root.bar.barForeground : Color.bar.text))
+              ? OmarchyPalette.Color.urgent
+              : (syncService.active ? OmarchyPalette.Color.accent : (root.bar ? root.bar.barForeground : OmarchyPalette.Color.bar.text))
             font.family: root.bar ? root.bar.fontFamily : ((Style.font && Style.font.family) ? Style.font.family : "")
             font.pixelSize: 10
             anchors.verticalCenter: parent.verticalCenter
@@ -119,7 +121,7 @@ BarWidget {
           width: 5
           height: 5
           radius: 2.5
-          color: Color.accent
+          color: OmarchyPalette.Color.accent
           visible: syncService.active && syncService.rcloneInstalled && syncService.rcloneConfigured
 
           SequentialAnimation on opacity {
@@ -143,8 +145,8 @@ BarWidget {
                       ? "GDrive ⚠ Reconnect"
                       : ("GDrive " + (syncService.storage && syncService.storage.free_formatted ? syncService.storage.free_formatted : "")))))
         color: (!syncService.rcloneInstalled || !syncService.rcloneConfigured || syncService.authError)
-          ? Color.urgent
-          : (syncService.active ? Color.accent : (root.bar ? root.bar.barForeground : Color.bar.text))
+          ? OmarchyPalette.Color.urgent
+          : (syncService.active ? OmarchyPalette.Color.accent : (root.bar ? root.bar.barForeground : OmarchyPalette.Color.bar.text))
         font.family: root.bar ? root.bar.fontFamily : ((Style.font && Style.font.family) ? Style.font.family : "")
         font.pixelSize: 10
         font.bold: !syncService.rcloneInstalled || !syncService.rcloneConfigured || syncService.active || syncService.authError

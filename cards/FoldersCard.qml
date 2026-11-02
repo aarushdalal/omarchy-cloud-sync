@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -22,7 +23,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(38)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
       clip: true
 
       RowLayout {
@@ -41,14 +42,14 @@ Item {
             spacing: Style.space(6)
             Text {
               text: "󰉋"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: 11
               anchors.verticalCenter: parent.verticalCenter
             }
             Text {
               text: "Synced Directories"
-              color: Color.foreground
+              color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               font.bold: true
@@ -62,7 +63,7 @@ Item {
             text: (root.syncService && root.syncService.folders)
               ? (root.syncService.folders.length + " configured sync paths")
               : "0 paths configured"
-            color: Qt.darker(Color.foreground, 1.8)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 1.8)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption - 1
             elide: Text.ElideRight
@@ -74,7 +75,7 @@ Item {
           height: Style.space(24)
           width: sysDlgText.implicitWidth + Style.space(10)
           radius: Style.cornerRadius - 3
-          color: sysDlgMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.selectedFillFor(Color.foreground, Color.accent)
+          color: sysDlgMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
           Row {
             id: sysDlgText
@@ -82,14 +83,14 @@ Item {
             spacing: 3
             Text {
               text: "󰍹"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: 10
               anchors.verticalCenter: parent.verticalCenter
             }
             Text {
               text: "Picker"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: 9
               font.bold: true
@@ -113,7 +114,7 @@ Item {
           height: Style.space(24)
           width: browseBtnText.implicitWidth + Style.space(12)
           radius: Style.cornerRadius - 3
-          color: browseBtnMouse.containsMouse ? Style.selectedFillFor(Color.foreground, Color.accent) : Color.accent
+          color: browseBtnMouse.containsMouse ? Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : OmarchyPalette.Color.accent
           scale: browseBtnMouse.pressed ? 0.96 : 1.0
 
           Behavior on scale { NumberAnimation { duration: 100 } }
@@ -126,7 +127,7 @@ Item {
 
             Text {
               text: "󰐕"
-              color: Color.menu.background
+              color: OmarchyPalette.Color.menu.background
               font.family: Style.font.family
               font.pixelSize: 10
               anchors.verticalCenter: parent.verticalCenter
@@ -134,7 +135,7 @@ Item {
 
             Text {
               text: "Add Folder"
-              color: Color.menu.background
+              color: OmarchyPalette.Color.menu.background
               font.family: Style.font.family
               font.pixelSize: 9
               font.bold: true
@@ -166,7 +167,7 @@ Item {
 
       Text {
         text: "Quick Add:"
-        color: Qt.darker(Color.foreground, 1.8)
+        color: Qt.darker(OmarchyPalette.Color.foreground, 1.8)
         font.family: (Style.font && Style.font.family) ? Style.font.family : ""
         font.pixelSize: 10
       }
@@ -183,16 +184,16 @@ Item {
           height: Style.space(22)
           width: presetText.implicitWidth + Style.space(14)
           radius: Style.cornerRadius - 3
-          color: presetMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.normalFillFor(Color.foreground, Color.accent)
+          color: presetMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
           Row {
             id: presetText
             anchors.centerIn: parent
             spacing: 3
-            Text { text: "+"; color: Color.accent; font.pixelSize: 9; font.bold: true }
+            Text { text: "+"; color: OmarchyPalette.Color.accent; font.pixelSize: 9; font.bold: true }
             Text {
               text: modelData.name
-              color: Color.foreground
+              color: OmarchyPalette.Color.foreground
               font.family: (Style.font && Style.font.family) ? Style.font.family : ""
               font.pixelSize: 9
             }
@@ -220,7 +221,7 @@ Item {
       Layout.fillWidth: true
       Layout.fillHeight: true
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
       clip: true
 
       ListView {
@@ -242,8 +243,8 @@ Item {
           height: Style.space(42)
           radius: Style.cornerRadius - 2
           color: itemMouse.containsMouse
-            ? Style.hoverFillFor(Color.foreground, Color.accent)
-            : Style.selectedFillFor(Color.foreground, Color.accent)
+            ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+            : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
           clip: true
 
           Behavior on color { ColorAnimation { duration: 150 } }
@@ -263,7 +264,7 @@ Item {
             // Category Icon
             Text {
               text: modelData.category === "antigravity" ? "󰚩" : (modelData.category === "system" ? "󰒓" : (modelData.category === "dotfiles" ? "󰈙" : (modelData.category === "media" ? "󰋩" : (modelData.category === "workspace" ? "󰆧" : "󰉋"))))
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: 10
               Layout.alignment: Qt.AlignVCenter
@@ -285,7 +286,7 @@ Item {
                   Layout.fillWidth: true
                   Layout.preferredWidth: 0
                   text: modelData.name || modelData.path
-                  color: modelData.enabled ? Color.foreground : Qt.darker(Color.foreground, 1.8)
+                  color: modelData.enabled ? OmarchyPalette.Color.foreground : Qt.darker(OmarchyPalette.Color.foreground, 1.8)
                   font.family: Style.font.family
                   font.pixelSize: 10
                   font.bold: true
@@ -297,13 +298,13 @@ Item {
                   height: Style.space(14)
                   width: catText.implicitWidth + Style.space(8)
                   radius: Style.cornerRadius - 4
-                  color: Qt.darker(Style.selectedFillFor(Color.foreground, Color.accent), 1.2)
+                  color: Qt.darker(Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent), 1.2)
 
                   Text {
                     id: catText
                     anchors.centerIn: parent
                     text: modelData.remote_subpath || "backup"
-                    color: Color.accent
+                    color: OmarchyPalette.Color.accent
                     font.family: Style.font.family
                     font.pixelSize: 8
                     font.bold: true
@@ -315,7 +316,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 text: (modelData.path === "system" ? "System manifests" : modelData.path) + " 󰁔 Omarchy/" + (modelData.remote_subpath || "backup")
-                color: Qt.darker(Color.foreground, 1.8)
+                color: Qt.darker(OmarchyPalette.Color.foreground, 1.8)
                 font.family: Style.font.family
                 font.pixelSize: 9
                 elide: Text.ElideMiddle
@@ -327,7 +328,7 @@ Item {
               width: Style.space(32)
               height: Style.space(18)
               radius: 9
-              color: modelData.enabled ? Color.accent : Qt.darker(Color.foreground, 2.5)
+              color: modelData.enabled ? OmarchyPalette.Color.accent : Qt.darker(OmarchyPalette.Color.foreground, 2.5)
               Layout.alignment: Qt.AlignVCenter
 
               Behavior on color { ColorAnimation { duration: 200 } }
@@ -358,13 +359,13 @@ Item {
               width: Style.space(26)
               height: Style.space(26)
               radius: Style.cornerRadius - 2
-              color: delMouse.containsMouse ? Color.urgent : "transparent"
+              color: delMouse.containsMouse ? OmarchyPalette.Color.urgent : "transparent"
               Layout.alignment: Qt.AlignVCenter
 
               Text {
                 anchors.centerIn: parent
                 text: "󰆴"
-                color: delMouse.containsMouse ? "#ffffff" : Color.urgent
+                color: delMouse.containsMouse ? "#ffffff" : OmarchyPalette.Color.urgent
                 font.family: Style.font.family
                 font.pixelSize: 12
               }

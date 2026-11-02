@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Ui
 
@@ -17,7 +18,7 @@ Item {
       Layout.fillWidth: true
       height: Style.space(34)
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       RowLayout {
         anchors.fill: parent
@@ -30,7 +31,7 @@ Item {
 
           Text {
             text: "󰅟"
-            color: Color.accent
+            color: OmarchyPalette.Color.accent
             font.family: Style.font.family
             font.pixelSize: 10
             anchors.verticalCenter: parent.verticalCenter
@@ -38,7 +39,7 @@ Item {
 
           Text {
             text: root.syncService ? root.syncService.remoteFullPath : "GDrive:Omarchy/"
-            color: Color.foreground
+            color: OmarchyPalette.Color.foreground
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             font.bold: true
@@ -47,7 +48,7 @@ Item {
 
           Text {
             text: "•"
-            color: Qt.darker(Color.foreground, 2.0)
+            color: Qt.darker(OmarchyPalette.Color.foreground, 2.0)
             font.family: Style.font.family
             font.pixelSize: 10
             anchors.verticalCenter: parent.verticalCenter
@@ -62,10 +63,10 @@ Item {
                   ? "AUTH EXPIRED"
                   : ((root.syncService && root.syncService.mounted) ? "MOUNTED" : "UNMOUNTED")))
             color: (root.syncService && (!root.syncService.rcloneInstalled || root.syncService.authError))
-              ? Color.urgent
+              ? OmarchyPalette.Color.urgent
               : ((root.syncService && !root.syncService.rcloneConfigured)
-                ? Color.accent
-                : ((root.syncService && root.syncService.mounted) ? "#44cc77" : Qt.darker(Color.foreground, 1.8)))
+                ? OmarchyPalette.Color.accent
+                : ((root.syncService && root.syncService.mounted) ? "#44cc77" : Qt.darker(OmarchyPalette.Color.foreground, 1.8)))
             font.family: Style.font.family
             font.pixelSize: Style.font.caption - 1
             font.bold: true
@@ -81,8 +82,8 @@ Item {
           height: Style.space(22)
           width: statusRow.implicitWidth + Style.space(12)
           color: (root.syncService && root.syncService.active)
-            ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.25)
-            : Style.selectedFillFor(Color.foreground, Color.accent)
+            ? Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.25)
+            : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
           Row {
             id: statusRow
@@ -94,14 +95,14 @@ Item {
               height: 6
               radius: 3
               color: (root.syncService && root.syncService.active)
-                ? Color.accent
+                ? OmarchyPalette.Color.accent
                 : ((root.syncService && (!root.syncService.rcloneInstalled || root.syncService.status === "error"))
-                  ? Color.urgent
-                  : ((root.syncService && !root.syncService.rcloneConfigured) ? Color.accent : "#44cc77"))
+                  ? OmarchyPalette.Color.urgent
+                  : ((root.syncService && !root.syncService.rcloneConfigured) ? OmarchyPalette.Color.accent : "#44cc77"))
               anchors.verticalCenter: parent.verticalCenter
 
               SequentialAnimation on opacity {
-                running: root.syncService && root.syncService.active
+                running: root.visible && root.enabled && !Motion.reducedMotion && root.syncService && root.syncService.active
                 loops: Animation.Infinite
                 NumberAnimation { from: 1.0; to: 0.2; duration: 500 }
                 NumberAnimation { from: 0.2; to: 1.0; duration: 500 }
@@ -117,10 +118,10 @@ Item {
                     ? ("SYNCING " + (root.syncService.speed !== "0 B/s" ? ("• " + root.syncService.speed) : ""))
                     : ((root.syncService && root.syncService.status === "error") ? "ERROR" : "IDLE")))
               color: (root.syncService && !root.syncService.rcloneInstalled)
-                ? Color.urgent
+                ? OmarchyPalette.Color.urgent
                 : ((root.syncService && !root.syncService.rcloneConfigured)
-                  ? Color.accent
-                  : ((root.syncService && root.syncService.active) ? Color.accent : Color.foreground))
+                  ? OmarchyPalette.Color.accent
+                  : ((root.syncService && root.syncService.active) ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground))
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               font.bold: true
@@ -136,7 +137,7 @@ Item {
       Layout.fillWidth: true
       Layout.fillHeight: true
       radius: Style.cornerRadius
-      color: Style.normalFillFor(Color.foreground, Color.accent)
+      color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
       ColumnLayout {
         anchors.fill: parent
@@ -153,7 +154,7 @@ Item {
 
             Text {
               text: "󰋊"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               anchors.verticalCenter: parent.verticalCenter
@@ -163,14 +164,14 @@ Item {
               spacing: 1
               Text {
                 text: "Google Drive Storage"
-                color: Color.foreground
+                color: OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
                 font.bold: true
               }
               Text {
                 text: "Target: GDrive:Omarchy/ • Unified Archiving"
-                color: Qt.darker(Color.foreground, 1.6)
+                color: Qt.darker(OmarchyPalette.Color.foreground, 1.6)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption - 1
               }
@@ -184,12 +185,12 @@ Item {
             width: Style.space(24)
             height: Style.space(24)
             radius: Style.cornerRadius - 3
-            color: refreshMouse.containsMouse ? Style.hoverFillFor(Color.foreground, Color.accent) : Style.selectedFillFor(Color.foreground, Color.accent)
+            color: refreshMouse.containsMouse ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent) : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
             Text {
               anchors.centerIn: parent
               text: "󰑐"
-              color: refreshMouse.containsMouse ? Color.accent : Color.foreground
+              color: refreshMouse.containsMouse ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: 10
             }
@@ -210,8 +211,8 @@ Item {
           visible: root.syncService && !root.syncService.rcloneInstalled
           height: Style.space(32)
           radius: Style.cornerRadius - 2
-          color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.15)
-          border.color: Color.urgent
+          color: Qt.rgba(OmarchyPalette.Color.urgent.r, OmarchyPalette.Color.urgent.g, OmarchyPalette.Color.urgent.b, 0.15)
+          border.color: OmarchyPalette.Color.urgent
           border.width: 1
 
           RowLayout {
@@ -222,7 +223,7 @@ Item {
 
             Text {
               text: "󰅚"
-              color: Color.urgent
+              color: OmarchyPalette.Color.urgent
               font.family: Style.font.family
               font.pixelSize: 11
             }
@@ -230,7 +231,7 @@ Item {
             Text {
               Layout.fillWidth: true
               text: "rclone is not installed. Please install it to use Cloud Sync."
-              color: Color.urgent
+              color: OmarchyPalette.Color.urgent
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               font.bold: true
@@ -241,7 +242,7 @@ Item {
               height: Style.space(22)
               width: installBtnText.implicitWidth + Style.space(14)
               radius: Style.cornerRadius - 4
-              color: Color.urgent
+              color: OmarchyPalette.Color.urgent
 
               Text {
                 id: installBtnText
@@ -269,8 +270,8 @@ Item {
           visible: root.syncService && root.syncService.rcloneInstalled && !root.syncService.rcloneConfigured
           height: Style.space(32)
           radius: Style.cornerRadius - 2
-          color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
-          border.color: Color.accent
+          color: Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.15)
+          border.color: OmarchyPalette.Color.accent
           border.width: 1
 
           RowLayout {
@@ -281,7 +282,7 @@ Item {
 
             Text {
               text: "󰒲"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: 11
             }
@@ -289,7 +290,7 @@ Item {
             Text {
               Layout.fillWidth: true
               text: "No rclone remotes found. Configure a remote (e.g. GDrive) to sync."
-              color: Color.foreground
+              color: OmarchyPalette.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               font.bold: true
@@ -300,13 +301,13 @@ Item {
               height: Style.space(22)
               width: setupBtnText.implicitWidth + Style.space(14)
               radius: Style.cornerRadius - 4
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
 
               Text {
                 id: setupBtnText
                 anchors.centerIn: parent
                 text: "Setup rclone"
-                color: Color.menu.background
+                color: OmarchyPalette.Color.menu.background
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption - 1
                 font.bold: true
@@ -328,8 +329,8 @@ Item {
           visible: root.syncService && root.syncService.rcloneInstalled && root.syncService.rcloneConfigured && root.syncService.authError
           height: Style.space(32)
           radius: Style.cornerRadius - 2
-          color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.15)
-          border.color: Color.urgent
+          color: Qt.rgba(OmarchyPalette.Color.urgent.r, OmarchyPalette.Color.urgent.g, OmarchyPalette.Color.urgent.b, 0.15)
+          border.color: OmarchyPalette.Color.urgent
           border.width: 1
 
           RowLayout {
@@ -340,7 +341,7 @@ Item {
 
             Text {
               text: "󰅟"
-              color: Color.urgent
+              color: OmarchyPalette.Color.urgent
               font.family: Style.font.family
               font.pixelSize: 11
             }
@@ -348,7 +349,7 @@ Item {
             Text {
               Layout.fillWidth: true
               text: "Google Drive OAuth token expired. Reconnect to restore access."
-              color: Color.urgent
+              color: OmarchyPalette.Color.urgent
               font.family: Style.font.family
               font.pixelSize: Style.font.caption - 1
               font.bold: true
@@ -359,7 +360,7 @@ Item {
               height: Style.space(22)
               width: reauthText.implicitWidth + Style.space(14)
               radius: Style.cornerRadius - 4
-              color: Color.urgent
+              color: OmarchyPalette.Color.urgent
 
               Text {
                 id: reauthText
@@ -397,10 +398,10 @@ Item {
                   ? (root.syncService.storage.used_formatted + " / " + root.syncService.storage.total_formatted)
                   : "-- / --"))
             color: (root.syncService && !root.syncService.rcloneInstalled)
-              ? Color.urgent
+              ? OmarchyPalette.Color.urgent
               : ((root.syncService && !root.syncService.rcloneConfigured)
-                ? Color.accent
-                : ((root.syncService && root.syncService.active) ? Color.accent : Color.foreground))
+                ? OmarchyPalette.Color.accent
+                : ((root.syncService && root.syncService.active) ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground))
             font.family: Style.font.family
             font.pixelSize: (root.syncService && (!root.syncService.rcloneInstalled || !root.syncService.rcloneConfigured)) ? Style.font.body : (Style.font.title + 2)
             font.bold: true
@@ -412,7 +413,7 @@ Item {
             Layout.fillWidth: true
             height: Style.space(6)
             radius: 3
-            color: Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.1)
+            color: Qt.rgba(OmarchyPalette.Color.foreground.r, OmarchyPalette.Color.foreground.g, OmarchyPalette.Color.foreground.b, 0.1)
 
             Rectangle {
               anchors.left: parent.left
@@ -420,7 +421,7 @@ Item {
               anchors.bottom: parent.bottom
               width: Math.min(parent.width, Math.max(0, parent.width * ((root.syncService && root.syncService.storage && root.syncService.storage.used_pct) ? (root.syncService.storage.used_pct / 100.0) : 0.0)))
               radius: 3
-              color: (root.syncService && root.syncService.storage && root.syncService.storage.used_pct > 85.0) ? Color.urgent : Color.accent
+              color: (root.syncService && root.syncService.storage && root.syncService.storage.used_pct > 85.0) ? OmarchyPalette.Color.urgent : OmarchyPalette.Color.accent
 
               Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
             }
@@ -436,7 +437,7 @@ Item {
               Layout.fillWidth: true
               height: Style.space(22)
               radius: Style.cornerRadius - 3
-              color: Style.selectedFillFor(Color.foreground, Color.accent)
+              color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
               Row {
                 anchors.centerIn: parent
@@ -444,7 +445,7 @@ Item {
                 Text { text: "󰄬"; color: "#44cc77"; font.family: Style.font.family; font.pixelSize: 9 }
                 Text {
                   text: "Free: " + ((root.syncService && root.syncService.storage && root.syncService.storage.free_formatted) ? root.syncService.storage.free_formatted : "--")
-                  color: Color.foreground
+                  color: OmarchyPalette.Color.foreground
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption - 1
                   font.bold: true
@@ -457,15 +458,15 @@ Item {
               Layout.fillWidth: true
               height: Style.space(22)
               radius: Style.cornerRadius - 3
-              color: Style.selectedFillFor(Color.foreground, Color.accent)
+              color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
               Row {
                 anchors.centerIn: parent
                 spacing: Style.space(3)
-                Text { text: "󰘚"; color: Color.accent; font.family: Style.font.family; font.pixelSize: 9 }
+                Text { text: "󰘚"; color: OmarchyPalette.Color.accent; font.family: Style.font.family; font.pixelSize: 9 }
                 Text {
                   text: "Used: " + ((root.syncService && root.syncService.storage && root.syncService.storage.used_pct !== undefined) ? (root.syncService.storage.used_pct + "%") : "0%")
-                  color: Color.foreground
+                  color: OmarchyPalette.Color.foreground
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption - 1
                   font.bold: true
@@ -478,15 +479,15 @@ Item {
               Layout.fillWidth: true
               height: Style.space(22)
               radius: Style.cornerRadius - 3
-              color: Style.selectedFillFor(Color.foreground, Color.accent)
+              color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
 
               Row {
                 anchors.centerIn: parent
                 spacing: Style.space(3)
-                Text { text: "󰉋"; color: Color.accent; font.family: Style.font.family; font.pixelSize: 9 }
+                Text { text: "󰉋"; color: OmarchyPalette.Color.accent; font.family: Style.font.family; font.pixelSize: 9 }
                 Text {
                   text: (root.syncService && root.syncService.folders ? root.syncService.folders.length : 0) + " Folders"
-                  color: Color.foreground
+                  color: OmarchyPalette.Color.foreground
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption - 1
                   font.bold: true
@@ -503,7 +504,7 @@ Item {
           Layout.fillWidth: true
           height: Style.space(38)
           radius: Style.cornerRadius - 3
-          color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
+          color: Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.12)
           visible: root.syncService && root.syncService.active
 
           RowLayout {
@@ -513,12 +514,12 @@ Item {
 
             Text {
               text: "󰓦"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: 10
               Layout.alignment: Qt.AlignVCenter
               RotationAnimation on rotation {
-                running: root.syncService && root.syncService.active
+                running: root.visible && root.enabled && !Motion.reducedMotion && root.syncService && root.syncService.active
                 loops: Animation.Infinite
                 from: 0; to: 360; duration: 1200
               }
@@ -530,7 +531,7 @@ Item {
               spacing: 1
               Text {
                 text: root.syncService ? root.syncService.message : "Syncing..."
-                color: Color.accent
+                color: OmarchyPalette.Color.accent
                 font.family: Style.font.family
                 font.pixelSize: 9
                 font.bold: true
@@ -540,7 +541,7 @@ Item {
               }
               Text {
                 text: root.syncService && root.syncService.currentFile ? root.syncService.currentFile : "Synchronizing changes..."
-                color: Color.foreground
+                color: OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: 8
                 elide: Text.ElideMiddle
@@ -551,7 +552,7 @@ Item {
 
             Text {
               text: (root.syncService ? root.syncService.progressPct : 0) + "%"
-              color: Color.accent
+              color: OmarchyPalette.Color.accent
               font.family: Style.font.family
               font.pixelSize: 11
               font.bold: true
@@ -571,8 +572,8 @@ Item {
             height: Style.space(30)
             radius: Style.cornerRadius - 3
             color: syncBtnMouse.containsMouse
-              ? ((root.syncService && root.syncService.active) ? Color.urgent : Style.selectedFillFor(Color.foreground, Color.accent))
-              : ((root.syncService && root.syncService.active) ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.85) : Color.accent)
+              ? ((root.syncService && root.syncService.active) ? OmarchyPalette.Color.urgent : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent))
+              : ((root.syncService && root.syncService.active) ? Qt.rgba(OmarchyPalette.Color.urgent.r, OmarchyPalette.Color.urgent.g, OmarchyPalette.Color.urgent.b, 0.85) : OmarchyPalette.Color.accent)
             scale: syncBtnMouse.pressed ? 0.98 : 1.0
 
             Behavior on scale { NumberAnimation { duration: 100 } }
@@ -584,7 +585,7 @@ Item {
 
               Text {
                 text: (root.syncService && root.syncService.active) ? "󰏤" : "󰓦"
-                color: (root.syncService && root.syncService.active) ? "#ffffff" : Color.menu.background
+                color: (root.syncService && root.syncService.active) ? "#ffffff" : OmarchyPalette.Color.menu.background
                 font.family: Style.font.family
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -592,7 +593,7 @@ Item {
 
               Text {
                 text: (root.syncService && root.syncService.active) ? "Stop" : "Sync All"
-                color: (root.syncService && root.syncService.active) ? "#ffffff" : Color.menu.background
+                color: (root.syncService && root.syncService.active) ? "#ffffff" : OmarchyPalette.Color.menu.background
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -629,8 +630,8 @@ Item {
             height: Style.space(30)
             radius: Style.cornerRadius - 3
             color: restoreBtnMouse.containsMouse
-              ? Style.hoverFillFor(Color.foreground, Color.accent)
-              : Style.selectedFillFor(Color.foreground, Color.accent)
+              ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+              : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
             scale: restoreBtnMouse.pressed ? 0.98 : 1.0
 
             Behavior on scale { NumberAnimation { duration: 100 } }
@@ -642,7 +643,7 @@ Item {
 
               Text {
                 text: "󰁯"
-                color: Color.accent
+                color: OmarchyPalette.Color.accent
                 font.family: Style.font.family
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -650,7 +651,7 @@ Item {
 
               Text {
                 text: "Restore"
-                color: Color.foreground
+                color: OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -677,8 +678,8 @@ Item {
             height: Style.space(30)
             radius: Style.cornerRadius - 3
             color: mountBtnMouse.containsMouse
-              ? Style.hoverFillFor(Color.foreground, Color.accent)
-              : Style.selectedFillFor(Color.foreground, Color.accent)
+              ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+              : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
             scale: mountBtnMouse.pressed ? 0.98 : 1.0
 
             Behavior on scale { NumberAnimation { duration: 100 } }
@@ -690,7 +691,7 @@ Item {
 
               Text {
                 text: "󰉋"
-                color: (root.syncService && root.syncService.mounted) ? "#44cc77" : Color.foreground
+                color: (root.syncService && root.syncService.mounted) ? "#44cc77" : OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: 10
                 Layout.alignment: Qt.AlignVCenter
@@ -698,7 +699,7 @@ Item {
 
               Text {
                 text: (root.syncService && root.syncService.mounted) ? "Unmount" : "Mount Drive"
-                color: Color.foreground
+                color: OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
