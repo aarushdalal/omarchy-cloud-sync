@@ -38,8 +38,8 @@ BarWidget {
   BorderSurface {
     id: islandSurface
     anchors.centerIn: parent
-    implicitWidth: rowLayout.implicitWidth + Style.space(16)
-    height: Math.max(14, root.barSize - Style.space(2))
+    implicitWidth: rowLayout.implicitWidth + Style.space(12)
+    height: Math.max(14, root.barSize - Style.space(4))
     radius: Style.cornerRadius
     color: islandMouse.containsMouse
       ? Style.hoverFillFor(root.bar ? root.bar.barForeground : OmarchyPalette.Color.bar.text, OmarchyPalette.Color.accent)
@@ -56,7 +56,7 @@ BarWidget {
     Row {
       id: rowLayout
       anchors.centerIn: parent
-      spacing: Style.space(6)
+      spacing: Style.space(4)
 
       // Cloud Icon or Rotating Sync Indicator
       Item {
@@ -134,25 +134,23 @@ BarWidget {
         }
       }
 
-      // Live Label: Progress % or Speed when syncing, or CLOUD / Storage Free when idle
+      // Live Compact Label: Progress % when syncing, or GDrive when idle
       Text {
         text: !syncService.rcloneInstalled
-          ? "rclone Not Installed"
+          ? "No rclone"
           : (!syncService.rcloneConfigured
-              ? "rclone Not Setup"
+              ? "Setup"
               : (syncService.active
-                  ? (syncService.dataProgressLabel !== ""
-                      ? (syncService.dataProgressLabel + " (" + syncService.progressPct + "%)")
-                      : (syncService.progressIndeterminate ? "Checking files…" : (syncService.progressPct > 0 ? (syncService.progressPct + "%") : (syncService.speed || "SYNCING"))))
+                  ? (syncService.progressIndeterminate ? "Sync…" : (Math.round(syncService.progressPct) + "%"))
                   : (syncService.authError
-                      ? "GDrive 󰀦 Reconnect"
-                      : ("GDrive " + (syncService.storage && syncService.storage.free_formatted ? syncService.storage.free_formatted : "")))))
+                      ? "Reconnect"
+                      : "GDrive")))
         color: (!syncService.rcloneInstalled || !syncService.rcloneConfigured || syncService.authError)
           ? OmarchyPalette.Color.urgent
           : (syncService.active ? OmarchyPalette.Color.accent : (root.bar ? root.bar.barForeground : OmarchyPalette.Color.bar.text))
         font.family: root.bar ? root.bar.fontFamily : ((Style.font && Style.font.family) ? Style.font.family : "")
         font.pixelSize: 10
-        font.bold: !syncService.rcloneInstalled || !syncService.rcloneConfigured || syncService.active || syncService.authError
+        font.bold: syncService.active || syncService.authError
         anchors.verticalCenter: parent.verticalCenter
 
         Behavior on color { ColorAnimation { duration: 150 } }
