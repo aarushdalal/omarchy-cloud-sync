@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import qs.Commons as OmarchyPalette
 import qs.Commons
 import qs.Commons as OmarchyPalette
 import qs.Ui

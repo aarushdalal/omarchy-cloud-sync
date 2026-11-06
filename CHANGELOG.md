@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0] - 2026-11-06
+
+### Upgraded
+- **Real-Time Data Progress Telemetry**: Added granular tracking for uploaded bytes (`upload_bytes_done` / `upload_bytes_total`), file counts (`upload_files_done` / `upload_files_total`), and dynamic transfer speed in both `OverviewCard` and the top bar widget.
+- **Immediate Error & Warning Visibility**: `ActivityCard` now inspects recent log events to immediately highlight sync issues with urgent indicator badges (`󰅙`) and explicit guidance, replacing ambiguous idle status.
+- **Active Backup Protection Matrix**: Integrated a structured matrix in `OverviewCard` surfacing protection coverage across AI instructions/skills, desktop/Hyprland configs, workspace repositories, and GDrive mirror.
+- **Guarded Wheel & Tab Navigation**: Added vertical scroll threshold guards to prevent accidental tab switching while scrolling content cards, plus bounded keyboard navigation (`Shift+Tab` wrap) and `switchTab(index)` bar widget API.
+- **Application Vector Assets**: Added official SVG application and symbolic icons (`assets/cloud-sync.svg`, `assets/cloud-sync-symbolic.svg`, `assets/logo.svg`).
+
+### Fixed / Previous Errors Resolved
+- Fixed ambiguous sync status where checking/scanning files appeared frozen or blank; now displays an indeterminate "Checking files…" state before uploads start.
+- Fixed silent failure masking where the dashboard displayed "All Directories In Sync" despite underlying errors or reconnect requirements.
+- Fixed privacy verification violation by replacing hardcoded user path literals with portable `Quickshell.env("HOME")` resolution.
+- Fixed layout dead space in `OverviewCard` when sync was idle.
+
 ## [1.2.0] - 2026-11-02
 
 - Refine GSync with compact accessible tabs, short directional crossfades and balanced theme-colored glass.

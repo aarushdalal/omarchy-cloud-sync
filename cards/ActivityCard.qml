@@ -10,6 +10,14 @@ Item {
 
   property var syncService: null
 
+  readonly property bool hasRecentErrors: {
+    if (!root.syncService || !root.syncService.recentLogs) return false
+    for (var i = 0; i < Math.min(root.syncService.recentLogs.length, 6); i++) {
+      if (root.syncService.recentLogs[i].level === "error") return true
+    }
+    return false
+  }
+
   clip: true
 
   ColumnLayout {
@@ -34,16 +42,18 @@ Item {
           Layout.fillWidth: true
           spacing: Style.space(8)
 
-          Row {
+          RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 0
             spacing: Style.space(6)
             Layout.alignment: Qt.AlignVCenter
 
             Text {
-              text: (root.syncService && root.syncService.active) ? "󰓦" : "󰄬"
-              color: (root.syncService && root.syncService.active) ? OmarchyPalette.Color.accent : "#44cc77"
+              text: (root.syncService && root.syncService.active) ? "󰓦" : (root.hasRecentErrors ? "󰅙" : "󰄬")
+              color: (root.syncService && root.syncService.active) ? OmarchyPalette.Color.accent : (root.hasRecentErrors ? OmarchyPalette.Color.urgent : "#44cc77")
               font.family: Style.font.family
               font.pixelSize: 10
-              anchors.verticalCenter: parent.verticalCenter
+              Layout.alignment: Qt.AlignVCenter
 
               RotationAnimation on rotation {
                 running: root.visible && root.enabled && !Motion.reducedMotion && root.syncService && root.syncService.active
@@ -55,14 +65,17 @@ Item {
             }
 
             Text {
+              Layout.fillWidth: true
+              Layout.preferredWidth: 0
               text: (root.syncService && root.syncService.active)
                 ? (root.syncService.message || "Syncing...")
-                : "All Directories In Sync"
-              color: (root.syncService && root.syncService.active) ? OmarchyPalette.Color.accent : OmarchyPalette.Color.foreground
+                : (root.hasRecentErrors ? "Sync Issues Detected (Review Log Below)" : "All Directories In Sync")
+              color: (root.syncService && root.syncService.active) ? OmarchyPalette.Color.accent : (root.hasRecentErrors ? OmarchyPalette.Color.urgent : OmarchyPalette.Color.foreground)
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
               font.bold: true
-              anchors.verticalCenter: parent.verticalCenter
+              elide: Text.ElideRight
+              Layout.alignment: Qt.AlignVCenter
             }
           }
 
@@ -113,7 +126,7 @@ Item {
             anchors.bottom: parent.bottom
             width: Math.min(parent.width, Math.max(0, parent.width * ((root.syncService && root.syncService.active) ? ((root.syncService.progressPct || 0) / 100.0) : 1.0)))
             radius: 3
-            color: (root.syncService && root.syncService.active) ? OmarchyPalette.Color.accent : "#44cc77"
+            color: (root.syncService && root.syncService.active) ? OmarchyPalette.Color.accent : (root.hasRecentErrors ? OmarchyPalette.Color.urgent : "#44cc77")
 
             Behavior on width { NumberAnimation { duration: 250 } }
           }
@@ -300,10 +313,18 @@ Item {
           model: root.syncService ? root.syncService.recentLogs : []
           clip: true
           boundsBehavior: Flickable.StopAtBounds
+          footer: Item { width: 1; height: Style.space(16) }
 
           ScrollBar.vertical: ScrollBar {
+            id: scrollBar
             active: true
-            policy: ScrollBar.AsNeeded
+            policy: ScrollBar.AlwaysOn
+            width: Style.space(8)
+            contentItem: Rectangle {
+              implicitWidth: Style.space(6)
+              radius: 3
+              color: scrollBar.pressed ? OmarchyPalette.Color.accent : (scrollBar.hovered ? Qt.lighter(OmarchyPalette.Color.accent, 1.2) : Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.45))
+            }
           }
 
           delegate: Rectangle {
@@ -328,7 +349,6 @@ Item {
                 Layout.alignment: Qt.AlignVCenter
               }
 
-
               // Timestamp Badge
               Rectangle {
                 height: Style.space(18)
@@ -348,16 +368,16 @@ Item {
                 }
               }
 
-              // Event Message Text (Guaranteed width constraint)
+              // Event Message Text (High-contrast, elided middle for full path visibility)
               Text {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.alignment: Qt.AlignVCenter
                 text: modelData.message || ""
-                color: modelData.level === "error" ? "#ee5555" : (modelData.level === "success" ? "#44cc77" : OmarchyPalette.Color.foreground)
+                color: modelData.level === "error" ? "#ff6677" : (modelData.level === "success" ? "#44cc77" : OmarchyPalette.Color.foreground)
                 font.family: (Style.font && Style.font.family) ? Style.font.family : ""
                 font.pixelSize: 10
-                elide: Text.ElideRight
+                elide: Text.ElideMiddle
               }
             }
           }

@@ -3,4 +3,5 @@ RefinedKeyboardPanel 1.0 RefinedKeyboardPanel.qml
 RefinedPopupCard 1.0 RefinedPopupCard.qml
 
 DashboardTabs 1.0 DashboardTabs.qml
+
 DashboardPage 1.0 DashboardPage.qml

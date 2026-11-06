@@ -228,14 +228,23 @@ Item {
         id: foldersList
         anchors.fill: parent
         anchors.margins: Style.space(6)
+        anchors.bottomMargin: Style.space(8)
         spacing: Style.space(5)
         model: root.syncService ? root.syncService.folders : []
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        footer: Item { width: 1; height: Style.space(16) }
 
         ScrollBar.vertical: ScrollBar {
+          id: scrollBar
           active: true
-          policy: ScrollBar.AsNeeded
+          policy: ScrollBar.AlwaysOn
+          width: Style.space(8)
+          contentItem: Rectangle {
+            implicitWidth: Style.space(6)
+            radius: 3
+            color: scrollBar.pressed ? OmarchyPalette.Color.accent : (scrollBar.hovered ? Qt.lighter(OmarchyPalette.Color.accent, 1.2) : Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.45))
+          }
         }
 
         delegate: Rectangle {

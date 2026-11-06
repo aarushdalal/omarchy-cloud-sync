@@ -39,6 +39,7 @@ import qs.Ui
 PanelWindow {
   id: root
   property real surfaceOpacity: 0.94
+  color: "transparent"
 
   required property Item anchorItem
   required property QtObject bar
@@ -82,7 +83,6 @@ PanelWindow {
 
   screen: anchorWindow ? anchorWindow.screen : null
   visible: open || card.opacity > 0 || popoutSwitching
-  color: "transparent"
   exclusionMode: ExclusionMode.Ignore
 
   WlrLayershell.namespace: "omarchy-keyboard-panel"

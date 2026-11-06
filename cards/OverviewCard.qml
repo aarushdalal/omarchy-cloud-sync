@@ -497,7 +497,110 @@ Item {
           }
         }
 
-        Item { Layout.fillHeight: true }
+        // Sync Architecture & Protection Telemetry (Eliminates dead space)
+        Rectangle {
+          Layout.fillWidth: true
+          Layout.fillHeight: true
+          radius: Style.cornerRadius - 2
+          color: Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+          border.color: Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.20)
+          border.width: 1
+
+          ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Style.space(10)
+            spacing: Style.space(6)
+
+            RowLayout {
+              Layout.fillWidth: true
+              Row {
+                spacing: Style.space(6)
+                Text {
+                  text: "󰅟"
+                  color: OmarchyPalette.Color.accent
+                  font.family: Style.font.family
+                  font.pixelSize: 10
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+                Text {
+                  text: "Active Backup Protection Matrix"
+                  color: OmarchyPalette.Color.foreground
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+              }
+              Item { Layout.fillWidth: true }
+              Text {
+                text: "Encrypted & Bounded"
+                color: OmarchyPalette.Color.accent
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption - 1
+                font.bold: true
+              }
+            }
+
+            GridLayout {
+              Layout.fillWidth: true
+              columns: 2
+              rowSpacing: Style.space(4)
+              columnSpacing: Style.space(6)
+
+              Rectangle {
+                Layout.fillWidth: true
+                height: Style.space(22)
+                radius: 3
+                color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+                Row {
+                  anchors.centerIn: parent
+                  spacing: 4
+                  Text { text: "󰚩"; color: OmarchyPalette.Color.accent; font.pixelSize: 9 }
+                  Text { text: "AI Skills & Instructions"; color: OmarchyPalette.Color.foreground; font.family: Style.font.family; font.pixelSize: 9; font.bold: true }
+                }
+              }
+
+              Rectangle {
+                Layout.fillWidth: true
+                height: Style.space(22)
+                radius: 3
+                color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+                Row {
+                  anchors.centerIn: parent
+                  spacing: 4
+                  Text { text: "󰒓"; color: OmarchyPalette.Color.accent; font.pixelSize: 9 }
+                  Text { text: "Desktop & Hyprland Config"; color: OmarchyPalette.Color.foreground; font.family: Style.font.family; font.pixelSize: 9; font.bold: true }
+                }
+              }
+
+              Rectangle {
+                Layout.fillWidth: true
+                height: Style.space(22)
+                radius: 3
+                color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+                Row {
+                  anchors.centerIn: parent
+                  spacing: 4
+                  Text { text: "󰆧"; color: OmarchyPalette.Color.accent; font.pixelSize: 9 }
+                  Text { text: "Work & Custom Repos"; color: OmarchyPalette.Color.foreground; font.family: Style.font.family; font.pixelSize: 9; font.bold: true }
+                }
+              }
+
+              Rectangle {
+                Layout.fillWidth: true
+                height: Style.space(22)
+                radius: 3
+                color: Style.normalFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
+                Row {
+                  anchors.centerIn: parent
+                  spacing: 4
+                  Text { text: "󰈙"; color: OmarchyPalette.Color.accent; font.pixelSize: 9 }
+                  Text { text: "GDrive CloudDrive Mirror"; color: OmarchyPalette.Color.foreground; font.family: Style.font.family; font.pixelSize: 9; font.bold: true }
+                }
+              }
+            }
+          }
+        }
 
         // Live Sync Progress Box (when active)
         Rectangle {
@@ -540,7 +643,9 @@ Item {
                 Layout.preferredWidth: 0
               }
               Text {
-                text: root.syncService && root.syncService.currentFile ? root.syncService.currentFile : "Synchronizing changes..."
+                text: root.syncService && root.syncService.dataProgressLabel !== ""
+                  ? ("Data to upload: " + root.syncService.dataProgressLabel + " • Speed: " + (root.syncService.speed || "0 B/s") + (root.syncService.uploadFilesTotal > 0 ? (" • " + root.syncService.uploadFilesDone + "/" + root.syncService.uploadFilesTotal + " files") : ""))
+                  : (root.syncService && root.syncService.currentFile ? root.syncService.currentFile : "Synchronizing changes...")
                 color: OmarchyPalette.Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: 8
@@ -629,6 +734,8 @@ Item {
             Layout.preferredWidth: 0
             height: Style.space(30)
             radius: Style.cornerRadius - 3
+            border.color: Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.40)
+            border.width: 1
             color: restoreBtnMouse.containsMouse
               ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
               : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
@@ -677,6 +784,8 @@ Item {
             Layout.preferredWidth: 0
             height: Style.space(30)
             radius: Style.cornerRadius - 3
+            border.color: Qt.rgba(OmarchyPalette.Color.accent.r, OmarchyPalette.Color.accent.g, OmarchyPalette.Color.accent.b, 0.40)
+            border.width: 1
             color: mountBtnMouse.containsMouse
               ? Style.hoverFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)
               : Style.selectedFillFor(OmarchyPalette.Color.foreground, OmarchyPalette.Color.accent)

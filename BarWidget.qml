@@ -22,6 +22,7 @@ BarWidget {
     function close(): void { root.close() }
     function toggle(): void { root.toggle() }
     function status(): string { return JSON.stringify({uiRevision:"minimal-glass-20261102", open:dashboard.open, tab:dashboard.activeTabIndex, surfaceOpacity:dashboard.surfaceOpacity}) }
+    function switchTab(index: int): void { dashboard.activeTabIndex = index; root.open() }
   }
 
   // Popup open/close shape contract for shell/bar
@@ -140,9 +141,11 @@ BarWidget {
           : (!syncService.rcloneConfigured
               ? "rclone Not Setup"
               : (syncService.active
-                  ? (syncService.progressPct > 0 ? (syncService.progressPct + "%") : (syncService.speed || "SYNCING"))
+                  ? (syncService.dataProgressLabel !== ""
+                      ? (syncService.dataProgressLabel + " (" + syncService.progressPct + "%)")
+                      : (syncService.progressIndeterminate ? "Checking files…" : (syncService.progressPct > 0 ? (syncService.progressPct + "%") : (syncService.speed || "SYNCING"))))
                   : (syncService.authError
-                      ? "GDrive ⚠ Reconnect"
+                      ? "GDrive 󰀦 Reconnect"
                       : ("GDrive " + (syncService.storage && syncService.storage.free_formatted ? syncService.storage.free_formatted : "")))))
         color: (!syncService.rcloneInstalled || !syncService.rcloneConfigured || syncService.authError)
           ? OmarchyPalette.Color.urgent

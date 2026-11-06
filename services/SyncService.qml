@@ -11,9 +11,19 @@ Item {
   property string currentFile: ""
   property string speed: "0 B/s"
   property real progressPct: 0.0
+  property bool progressIndeterminate: false
+  property bool progressEstimated: false
+  readonly property string progressLabel: progressIndeterminate ? "Checking files…" : ((active && progressEstimated ? "~" : "") + progressPct + "%")
   property string etaFormatted: "0s"
   property string bytesTransferredFormatted: "0 B"
   property string bytesTotalFormatted: "0 B"
+  property string uploadBytesTotalFormatted: "0 B"
+  property string uploadBytesDoneFormatted: "0 B"
+  property int uploadFilesTotal: 0
+  property int uploadFilesDone: 0
+  readonly property string dataProgressLabel: active && (bytesTotalFormatted !== "0 B" && bytesTotalFormatted !== "Unknown")
+    ? (bytesTransferredFormatted + " / " + bytesTotalFormatted)
+    : ""
 
   property var activeTransfers: []
   property var recentLogs: []
@@ -52,7 +62,7 @@ Item {
 
   property bool dashboardOpen: false
 
-  readonly property string stateFilePath: (Quickshell.env("XDG_RUNTIME_DIR") || ("/run/user/" + Quickshell.env("UID"))) + "/omarchy-cloud-sync/state.json"
+  readonly property string stateFilePath: Quickshell.env("HOME") + "/.local/state/omarchy/cloud-sync/state.json"
   readonly property string configFilePath: Quickshell.env("HOME") + "/.config/omarchy/cloud-sync.json"
 
   // 1. Direct inotify FileView watching state.json (Instant 0ms live telemetry)
@@ -75,6 +85,13 @@ Item {
     onLoaded: root.applyConfigJson(text())
   }
 
+  function formatBytes(value) {
+    if (!(value > 0)) return "0 B"
+    var units = ["B", "KiB", "MiB", "GiB", "TiB"]
+    var index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)))
+    return (value / Math.pow(1024, index)).toFixed(index > 0 ? 1 : 0) + " " + units[index]
+  }
+
   function applyStateJson(rawText) {
     if (!rawText || rawText.trim() === "") return
     try {
@@ -85,9 +102,15 @@ Item {
       root.currentFile = data.current_file || ""
       root.speed = data.speed || "0 B/s"
       root.progressPct = (typeof data.progress_pct === "number") ? data.progress_pct : 0.0
+      root.progressIndeterminate = root.active && ((data.progress_indeterminate === true) || (!(data.bytes_total > 0) && root.progressPct === 0))
+      root.progressEstimated = data.progress_estimated === true
       root.etaFormatted = data.eta_formatted || "0s"
-      root.bytesTransferredFormatted = data.bytes_transferred_formatted || "0 B"
-      root.bytesTotalFormatted = data.bytes_total_formatted || "0 B"
+      root.bytesTransferredFormatted = (typeof data.bytes_transferred === "number") ? root.formatBytes(data.bytes_transferred) : (data.bytes_transferred_formatted || "0 B")
+      root.bytesTotalFormatted = (typeof data.bytes_total === "number") ? root.formatBytes(data.bytes_total) : (data.bytes_total_formatted || "0 B")
+      root.uploadBytesDoneFormatted = (typeof data.upload_bytes_done === "number") ? root.formatBytes(data.upload_bytes_done) : (data.upload_bytes_done_formatted || root.bytesTransferredFormatted)
+      root.uploadBytesTotalFormatted = (typeof data.upload_bytes_total === "number") ? root.formatBytes(data.upload_bytes_total) : (data.upload_bytes_total_formatted || root.bytesTotalFormatted)
+      root.uploadFilesTotal = (typeof data.upload_files_total === "number") ? data.upload_files_total : 0
+      root.uploadFilesDone = (typeof data.upload_files_done === "number") ? data.upload_files_done : 0
       root.activeTransfers = data.active_transfers || []
       root.recentLogs = data.recent_logs || []
 
@@ -187,7 +210,7 @@ Item {
   }
 
   function restoreFromCloud() {
-    execAction(["restore"])
+    execAction(["recovery-ui"])
   }
 
   function toggleMount() {

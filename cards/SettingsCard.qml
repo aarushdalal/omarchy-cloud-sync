@@ -113,7 +113,7 @@ Item {
         spacing: Style.space(4)
 
         Text {
-          text: "⏰ Auto-Sync Schedule"
+          text: "󰔛 Auto-Sync Schedule"
           color: OmarchyPalette.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.bodySmall

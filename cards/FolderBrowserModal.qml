@@ -294,8 +294,10 @@ Rectangle {
 
             Text {
               anchors.centerIn: parent
-              text: "⬆️"
-              font.pixelSize: 10
+              text: "󰁝"
+              color: OmarchyPalette.Color.foreground
+              font.family: Style.font.family
+              font.pixelSize: Style.font.bodySmall
             }
 
             MouseArea {

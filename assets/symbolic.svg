@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#38EF7D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M17.5 19H6.5A4.5 4.5 0 0 1 5 10.2 6.5 6.5 0 0 1 17.2 8.5 4.5 4.5 0 0 1 17.5 19Z" stroke="#e0e4ee"/>
+  <path d="M10 13a2.5 2.5 0 0 1 4.2-1.8l.8.8" stroke="#38EF7D"/>
+  <polyline points="15 10 15 12 13 12" stroke="#38EF7D"/>
+  <path d="M14 15a2.5 2.5 0 0 1-4.2 1.8l-.8-.8" stroke="#38EF7D"/>
+  <polyline points="9 18 9 16 11 16" stroke="#38EF7D"/>
+</svg>
